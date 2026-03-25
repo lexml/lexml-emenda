@@ -1,7 +1,7 @@
 import { LitElement, html, TemplateResult, PropertyValues } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 
-@customElement('autocomplete-async')
+@customElement('lexml-emenda-autocomplete-async')
 export class AutocompleteAsync extends LitElement {
   @property({ type: String })
   placeholder = '';
@@ -95,16 +95,16 @@ export class AutocompleteAsync extends LitElement {
           display: none;
         }
 
-        .lexml-autocomplete-input {
+        .lexml-emenda-autocomplete-input {
           width: 100%;
         }
 
         @media (max-width: 576px) {
-          .lexml-autocomplete-label {
+          .lexml-emenda-autocomplete-label {
             width: calc(100% - 2px);
             display: block;
           }
-          .lexml-autocomplete-input {
+          .lexml-emenda-autocomplete-input {
             width: calc(100% - 2px);
           }
         }
@@ -112,7 +112,7 @@ export class AutocompleteAsync extends LitElement {
       <slot id="dropdown-input">
         <sl-input
           id="defaultInput"
-          class="lexml-autocomplete-input"
+          class="lexml-emenda-autocomplete-input"
           type="text"
           label=${this.label}
           placeholder=${this.placeholder}
@@ -344,6 +344,6 @@ export class Option {
 
 declare global {
   interface HTMLElementTagNameMap {
-    'autocomplete-async': AutocompleteAsync;
+    'lexml-emenda-autocomplete-async': AutocompleteAsync;
   }
 }

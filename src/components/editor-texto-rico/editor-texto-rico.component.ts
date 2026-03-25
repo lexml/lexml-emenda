@@ -45,7 +45,7 @@ const Delta = Quill.import('delta');
 const CLASS_BUTTON_ACEITAR_REVISAO = 'aceitar-revisao';
 const CLASS_BUTTON_REJEITAR_REVISAO = 'rejeitar-revisao';
 
-@customElement('editor-texto-rico')
+@customElement('lexml-emenda-editor-texto-rico')
 export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
   @property({ type: String }) texto = '';
   @property({ type: Array }) anexos: Anexo[] = [];
@@ -74,7 +74,7 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
   @query('#lexml-alterar-largura-img-modal')
   private alterarLarguraImagemModal!: AlterarLarguraImagemModalComponent;
 
-  @query('#lexml-switch-revisao-component')
+  @query('#lexml-emenda-switch-revisao-component')
   private switchRevisaoComponent!: SwitchRevisaoComponent;
 
   _textoAntesRevisao?: string;
@@ -170,14 +170,14 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
       ${quillTableCss} ${editorTextoRicoCss} ${notaRodapeCss} ${this.modo === Modo.TEXTO_LIVRE ? this.renderBotaoAnexo() : ''}
 
       <div class="panel-revisao">
-        <lexml-switch-revisao
-          id="lexml-switch-revisao-component"
+        <lexml-emenda-switch-revisao
+          id="lexml-emenda-switch-revisao-component"
           modo="${this.modo}"
           class="revisao-container"
           .nomeSwitch="${this.getNomeSwitch()}"
           .nomeBadgeQuantidadeRevisao="${this.getNomeBadge()}"
         >
-        </lexml-switch-revisao>
+        </lexml-emenda-switch-revisao>
 
         <sl-button class="aceitar-revisao" variant="default" size="small" title="Aceitar revisões" @click=${(): void => this.aceitarRevisoes()} disabled circle>
           <sl-icon name="check-lg"></sl-icon>
@@ -186,10 +186,10 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
           <sl-icon name="x"></sl-icon>
         </sl-button>
       </div>
-      <div id="${this.id}-inner" class="editor-texto-rico" @onTableInTable=${this.onTableInTable}></div>
-      <lexml-alterar-largura-tabela-coluna-modal id="lexml-alterar-largura-tabela-modal" tipo="tabela"></lexml-alterar-largura-tabela-coluna-modal>
-      <lexml-alterar-largura-tabela-coluna-modal id="lexml-alterar-largura-coluna-modal" tipo="coluna"></lexml-alterar-largura-tabela-coluna-modal>
-      <lexml-alterar-largura-imagem-modal id="lexml-alterar-largura-img-modal"></lexml-alterar-largura-imagem-modal>
+      <div id="${this.id}-inner" class="lexml-emenda-editor-texto-rico" @onTableInTable=${this.onTableInTable}></div>
+      <lexml-emenda-alterar-largura-tabela-coluna-modal id="lexml-alterar-largura-tabela-modal" tipo="tabela"></lexml-emenda-alterar-largura-tabela-coluna-modal>
+      <lexml-emenda-alterar-largura-tabela-coluna-modal id="lexml-alterar-largura-coluna-modal" tipo="coluna"></lexml-emenda-alterar-largura-tabela-coluna-modal>
+      <lexml-emenda-alterar-largura-imagem-modal id="lexml-alterar-largura-img-modal"></lexml-emenda-alterar-largura-imagem-modal>
     `;
   }
 
@@ -208,7 +208,7 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
     this.icons['underline'] = sublinhado;
     this.icons['text-indent'] = iconeTextIndent;
     this.icons['margin-bottom'] = iconeMarginBottom;
-    this.icons['nota-rodape'] = iconeNotaDeRodape;
+    this.icons['lexml-emenda-nota-rodape'] = iconeNotaDeRodape;
   }
 
   private renderBotaoAnexo(): TemplateResult {
@@ -257,9 +257,9 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
       const customToolbarOptions = [...toolbarOptions];
       const customFormatsOptions = [...formatsOptions];
       if (this.modo === Modo.JUSTIFICATIVA) {
-        customToolbarOptions.push(['nota-rodape']);
+        customToolbarOptions.push(['lexml-emenda-nota-rodape']);
         customToolbarOptions[1] = ['bold', 'italic', 'underline', 'link'];
-        customFormatsOptions.push('nota-rodape');
+        customFormatsOptions.push('lexml-emenda-nota-rodape');
         customFormatsOptions.push('link');
       }
 
@@ -535,7 +535,7 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
     this.setTitle(toolbarContainer, 'button.ql-margin-bottom', 'Distância entre parágrafos');
     this.setTitle(toolbarContainer, 'button.ql-text-indent', 'Recuo de parágrafo');
     this.setTitle(toolbarContainer, 'button.ql-table', 'Tabela');
-    this.setTitle(toolbarContainer, 'button.ql-nota-rodape', 'Nota de rodapé');
+    this.setTitle(toolbarContainer, 'button.ql-lexml-emenda-nota-rodape', 'Nota de rodapé');
   };
 
   setTitle = (toolbarContainer: HTMLElement, seletor: string, title: string): void => toolbarContainer.querySelector(seletor)?.setAttribute('title', title);

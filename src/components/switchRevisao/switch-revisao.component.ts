@@ -8,7 +8,7 @@ import { StateEvent, StateType } from '../../redux/state';
 import { alertarInfo } from '../../redux/elemento/util/alertaUtil';
 import { Modo } from '../../redux/elemento/enum/enumUtil';
 
-@customElement('lexml-switch-revisao')
+@customElement('lexml-emenda-switch-revisao')
 export class SwitchRevisaoComponent extends connect(rootStore)(LitElement) {
   @property({ type: Number })
   quantidadeRevisao = 0;

@@ -198,7 +198,7 @@ Cypress.Commands.add('digitarNoDispositivo', { prevSubject: 'element' }, (subjec
 
 Cypress.Commands.add('inserirTextoNaJustificacao', (texto: string): Cypress.Chainable<JQuery<HTMLElement>> => {
   cy.get('#sl-tab-2').click();
-  cy.get('#editor-texto-rico-justificativa-inner > .ql-editor')
+  cy.get('#lexml-emenda-editor-texto-rico-justificativa-inner > .ql-editor')
     .as('qlJustificacao')
     .should('be.visible')
     .focus()
@@ -213,7 +213,7 @@ Cypress.Commands.add('getTextoDoDispositivo', { prevSubject: 'element' }, (subje
 });
 
 Cypress.Commands.add('getSwitchRevisaoDispositivo', () => {
-  return cy.get('lexml-eta lexml-switch-revisao.revisao-container').as('switchRevisaoDispositivo');
+  return cy.get('lexml-eta lexml-emenda-switch-revisao.revisao-container').as('switchRevisaoDispositivo');
 });
 
 Cypress.Commands.add('getCheckRevisao', { prevSubject: 'element' }, (subject: JQuery<HTMLElement>): Cypress.Chainable<JQuery<HTMLElement>> => {
@@ -264,8 +264,8 @@ Cypress.Commands.add('checarEstadoInicialAoCriarNovaEmendaEstruturada', (payload
   // lexml-eta deve existir e estar visível
   cy.get('lexml-eta').should('exist').should('have.attr', 'style', 'display: block');
 
-  // editor-texto-rico deve existir e estar oculto
-  cy.get('editor-texto-rico[modo="textoLivre"]').should('exist').should('have.attr', 'style', 'display: none');
+  // lexml-emenda-editor-texto-rico deve existir e estar oculto
+  cy.get('lexml-emenda-editor-texto-rico[modo="textoLivre"]').should('exist').should('have.attr', 'style', 'display: none');
 
   cy.get('lexml-emenda-comando').should('exist');
 
@@ -357,13 +357,13 @@ const fnChecarDadosEmendaAbaTextoEmendaArtigoOndeCouber = (emenda: Emenda): void
 };
 
 const fnChecarDadosEmendaAbaTextoEmendaTextoLivre = (): void => {
-  cy.get('editor-texto-rico[modo="textoLivre"]').should('exist').should('have.attr', 'style', 'display: block');
+  cy.get('lexml-emenda-editor-texto-rico[modo="textoLivre"]').should('exist').should('have.attr', 'style', 'display: block');
 };
 
 const fnChecarDadosEmendaAbaJustificativa = (emenda: Emenda): void => {
   const justificativa = removeAllHtmlTags(emenda.justificativa ?? '').replace(regexEspaco, '');
   cy.get('#sl-tab-2').click();
-  cy.get('#editor-texto-rico-justificativa-inner > .ql-editor').then($el => {
+  cy.get('#lexml-emenda-editor-texto-rico-justificativa-inner > .ql-editor').then($el => {
     expect($el.text().replace(regexEspaco, '')).equal(justificativa);
   });
 };
@@ -386,35 +386,35 @@ const fnChecarDadosEmendaAbaAutoria = (emenda: Emenda): void => {
   cy.get('#sl-tab-3').click();
 
   // Verificar a seleção do tipo Órgão destino
-  cy.get('lexml-destino').shadow().find('sl-radio-group#tipoColegiado').find('sl-radio').contains(emenda.colegiadoApreciador.tipoColegiado).should('have.attr', 'checked');
+  cy.get('lexml-emenda-destino').shadow().find('sl-radio-group#tipoColegiado').find('sl-radio').contains(emenda.colegiadoApreciador.tipoColegiado).should('have.attr', 'checked');
 
   // Verificar o preenchimento do nome do Órgão destino
-  cy.get('lexml-destino')
+  cy.get('lexml-emenda-destino')
     .shadow()
-    .find('autocomplete-async')
+    .find('lexml-emenda-autocomplete-async')
     .should($el => {
       expect(fnGetArrayNomeComissao(emenda)).to.include($el[0].value);
     });
 
   // Verificar a seleção do radio Data e o preenchimento do valor
   if (emenda.data) {
-    cy.get('lexml-data').shadow().find('sl-radio[value="1"]').should('not.have.attr', 'checked');
-    cy.get('lexml-data').shadow().find('sl-radio[value="2"]').should('have.attr', 'checked');
-    cy.get('lexml-data').shadow().find('sl-radio[value="2"] sl-input#input-data').should('have.value', emenda.data);
+    cy.get('lexml-emenda-data').shadow().find('sl-radio[value="1"]').should('not.have.attr', 'checked');
+    cy.get('lexml-emenda-data').shadow().find('sl-radio[value="2"]').should('have.attr', 'checked');
+    cy.get('lexml-emenda-data').shadow().find('sl-radio[value="2"] sl-input#input-data').should('have.value', emenda.data);
   } else {
-    cy.get('lexml-data').shadow().find('sl-radio[value="1"]').should('have.attr', 'checked');
-    cy.get('lexml-data').shadow().find('sl-radio[value="2"]').should('not.have.attr', 'checked');
+    cy.get('lexml-emenda-data').shadow().find('sl-radio[value="1"]').should('have.attr', 'checked');
+    cy.get('lexml-emenda-data').shadow().find('sl-radio[value="2"]').should('not.have.attr', 'checked');
   }
 
   // Verificar o preenchimento dos campos da seção Autoria
   // Verificar o preenchimento do campo Parlamentar e Cargo
   const sParlamentares = emenda.autoria.parlamentares.map(p => `${p.nome} - ${p.cargo ?? ''}`).join('; ');
-  cy.get('lexml-autoria')
+  cy.get('lexml-emenda-autoria')
     .shadow()
     .find('div.autoria-grid:not(.autoria-labels)')
     .then($divs => {
       const sParlamentaresAux = $divs.map((index, div) => {
-        const nome = div.querySelector('lexml-autocomplete')?.value;
+        const nome = div.querySelector('lexml-emenda-autocomplete')?.value;
         const cargo = (div.querySelector('sl-input#tex-cargo') as any)?.value;
         return nome ? `${nome} - ${cargo}` : '';
       });
@@ -423,32 +423,32 @@ const fnChecarDadosEmendaAbaAutoria = (emenda: Emenda): void => {
     });
 
   // Verificar o preenchimento do campo Quantidade de assinaturas adicionais de Senadores
-  cy.get('lexml-autoria').shadow().find('#num-assinaturas-adicionais-senadores').should('have.value', emenda.autoria.quantidadeAssinaturasAdicionaisSenadores);
+  cy.get('lexml-emenda-autoria').shadow().find('#num-assinaturas-adicionais-senadores').should('have.value', emenda.autoria.quantidadeAssinaturasAdicionaisSenadores);
 
   // Verificar o preenchimento do campo Quantidade de assinaturas adicionais de Deputados Federais
-  cy.get('lexml-autoria').shadow().find('#num-assinaturas-adicionais-deputados').should('have.value', emenda.autoria.quantidadeAssinaturasAdicionaisDeputados);
+  cy.get('lexml-emenda-autoria').shadow().find('#num-assinaturas-adicionais-deputados').should('have.value', emenda.autoria.quantidadeAssinaturasAdicionaisDeputados);
 
   // Verificar o checkbox de imprimir partido e UF para os signatários
-  cy.get('lexml-autoria')
+  cy.get('lexml-emenda-autoria')
     .shadow()
     .find('input#chk-exibir-partido-uf')
     .should((emenda.autoria.imprimirPartidoUF ? '' : 'not.') + 'have.attr', 'checked');
 
   // Verificar o preenchimento dos campos da seção Opções de impressão
   // Verificar a seleção de imprimir brasão
-  cy.get('lexml-opcoes-impressao')
+  cy.get('lexml-emenda-opcoes-impressao')
     .shadow()
     .find('input#chk-imprimir-brasao')
     .should((emenda.opcoesImpressao.imprimirBrasao ? '' : 'not.') + 'have.attr', 'checked');
 
   // Verificar a seleção do campo tamanho da letra
-  cy.get('lexml-opcoes-impressao')
+  cy.get('lexml-emenda-opcoes-impressao')
     .shadow()
     .find('sl-select#select-tamanho-fonte')
     .should('have.value', emenda.opcoesImpressao.tamanhoFonte ?? '');
 
   // Verificar a seleção de reduzir espaçamento entre linhas
-  cy.get('lexml-opcoes-impressao')
+  cy.get('lexml-emenda-opcoes-impressao')
     .shadow()
     .find('input#chk-reduzir-espaco')
     .should((emenda.opcoesImpressao.reduzirEspacoEntreLinhas ? '' : 'not.') + 'have.attr', 'checked');

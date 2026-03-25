@@ -7,7 +7,7 @@ import { Elemento } from '../model/elemento';
 import { LexmlEmendaConfig } from '../model/lexmlEmendaConfig';
 import { rootStore } from '../redux/store';
 
-@customElement('lexml-eta-articulacao')
+@customElement('lexml-emenda-articulacao')
 export class ArticulacaoComponent extends connect(rootStore)(LitElement) {
   @property({ type: Array }) elementos: Elemento[] = [];
   @property({ type: Object }) lexmlEtaConfig: LexmlEmendaConfig = new LexmlEmendaConfig();

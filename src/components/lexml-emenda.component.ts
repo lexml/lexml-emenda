@@ -152,17 +152,17 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
 
   @query('lexml-eta')
   _lexmlEta?: LexmlEtaComponent;
-  @query('#editor-texto-rico-emenda')
+  @query('#lexml-emenda-editor-texto-rico-emenda')
   _lexmlEmendaTextoRico;
-  @query('#editor-texto-rico-justificativa')
+  @query('#lexml-emenda-editor-texto-rico-justificativa')
   _lexmlJustificativa;
-  @query('lexml-destino')
+  @query('lexml-emenda-destino')
   _lexmlDestino?: DestinoComponent;
-  @query('lexml-autoria')
+  @query('lexml-emenda-autoria')
   _lexmlAutoria;
-  @query('lexml-data')
+  @query('lexml-emenda-data')
   _lexmlData;
-  @query('lexml-opcoes-impressao')
+  @query('lexml-emenda-opcoes-impressao')
   _lexmlOpcoesImpressao;
   @query('#tabs-esquerda')
   _tabsEsquerda;
@@ -755,7 +755,7 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
 
     const justificativaTabPanel = getElement('sl-tab-panel[name="justificativa"]');
     const emendaTabPanel = getElement('sl-tab-panel[name="lexml-eta"]');
-    const qlToolbarJustificativa = getElement('#editor-texto-rico-justificativa .ql-toolbar');
+    const qlToolbarJustificativa = getElement('#lexml-emenda-editor-texto-rico-justificativa .ql-toolbar');
     const qlToolbarEmenda = getElement('#lx-eta-barra-ferramenta');
 
     const estilosOriginais = {
@@ -924,16 +924,16 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
           font-family: var(--eta-font-serif);
           text-align: left;
         }
-        /* #editor-texto-rico-justificativa #editor-texto-rico {
+        /* #lexml-emenda-editor-texto-rico-justificativa #lexml-emenda-editor-texto-rico {
           height: calc(var(--height) - 44px);
           overflow: var(--overflow);
         } */
 
-        #editor-texto-rico-emenda-inner {
+        #lexml-emenda-editor-texto-rico-emenda-inner {
           height: calc(var(--heightJustificativa));
           overflow: var(--overflow);
         }
-        #editor-texto-rico-justificativa-inner {
+        #lexml-emenda-editor-texto-rico-justificativa-inner {
           height: calc(var(--heightJustificativa));
           overflow: var(--overflow);
         }
@@ -1078,36 +1078,36 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
                 .lexmlEtaConfig=${this.lexmlEmendaConfig}
                 @onchange=${this.onChange}
               ></lexml-eta>
-              <editor-texto-rico
+              <lexml-emenda-editor-texto-rico
                 style="display: ${this.isEmendaTextoLivre() ? 'block' : 'none'}"
                 modo="textoLivre"
-                id="editor-texto-rico-emenda"
+                id="lexml-emenda-editor-texto-rico-emenda"
                 registroEvento="justificativa"
                 @onchange=${this.onChange}
-              ></editor-texto-rico>
+              ></lexml-emenda-editor-texto-rico>
               <lexml-substituicao-termo style="display: ${this.isEmendaSubstituicaoTermo() ? 'block' : 'none'}" @onchange=${this.onChange}></lexml-substituicao-termo>
             </sl-tab-panel>
             <sl-tab-panel name="justificativa" class="overflow-hidden">
-              <editor-texto-rico
+              <lexml-emenda-editor-texto-rico
                 .lexmlEtaConfig=${this.lexmlEmendaConfig}
                 modo="justificativa"
-                id="editor-texto-rico-justificativa"
+                id="lexml-emenda-editor-texto-rico-justificativa"
                 registroEvento="justificativa"
                 @onchange=${this.onChange}
-              ></editor-texto-rico>
+              ></lexml-emenda-editor-texto-rico>
             </sl-tab-panel>
             <sl-tab-panel name="autoria" class="overflow-hidden">
               <div class="tab-autoria__container">
-                <lexml-destino .comissoes=${this.comissoes}></lexml-destino>
+                <lexml-emenda-destino .comissoes=${this.comissoes}></lexml-emenda-destino>
                 <br />
-                <lexml-data></lexml-data>
+                <lexml-emenda-data></lexml-emenda-data>
                 <br />
-                <lexml-autoria .parlamentares=${this.parlamentares}></lexml-autoria>
-                <lexml-opcoes-impressao></lexml-opcoes-impressao>
+                <lexml-emenda-autoria .parlamentares=${this.parlamentares}></lexml-emenda-autoria>
+                <lexml-emenda-opcoes-impressao></lexml-emenda-opcoes-impressao>
               </div>
             </sl-tab-panel>
             <sl-tab-panel name="avisos" class="overflow-hidden">
-              <lexml-eta-alertas></lexml-eta-alertas>
+              <lexml-emenda-alertas></lexml-emenda-alertas>
             </sl-tab-panel>
           </sl-tab-group>
         </div>
@@ -1159,10 +1159,10 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
               </div>
             </sl-tab-panel>
             <sl-tab-panel name="dicas" class="overflow-hidden">
-              <lexml-ajuda></lexml-ajuda>
+              <lexml-emenda-ajuda></lexml-emenda-ajuda>
             </sl-tab-panel>
             <sl-tab-panel name="atalhos" class="overflow-hidden">
-              <lexml-eta-atalhos></lexml-eta-atalhos>
+              <lexml-emenda-atalhos></lexml-emenda-atalhos>
             </sl-tab-panel>
           </sl-tab-group>
         </div>
@@ -1249,13 +1249,13 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
 
   localizarNotaRodape(idNotaRodape: any): void {
     // const idNotaRodape = event.target.getAttribute('idNotaRodape');
-    const notaRodapeElement = this.querySelector(`.ql-editor nota-rodape[id-nota-rodape="${idNotaRodape}"]`);
+    const notaRodapeElement = this.querySelector(`.ql-editor lexml-emenda-nota-rodape[id-lexml-emenda-nota-rodape="${idNotaRodape}"]`);
     const tab = this.getTabFromElement(notaRodapeElement);
     this.focusOnTab(tab.getAttribute('name'));
     notaRodapeElement && setTimeout(() => notaRodapeElement.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
-    const notasRodape = this.querySelectorAll('.ql-editor nota-rodape');
+    const notasRodape = this.querySelectorAll('.ql-editor lexml-emenda-nota-rodape');
     notasRodape.forEach(nr => {
-      if (nr.attributes['id-nota-rodape'].value === idNotaRodape) {
+      if (nr.attributes['id-lexml-emenda-nota-rodape'].value === idNotaRodape) {
         nr?.classList.add('pulse');
       } else {
         nr.classList.remove('pulse');
@@ -1281,13 +1281,13 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
   }
 
   removerPulsarNotaRodape(idNotaRodape: any): void {
-    const notaRodapeElement = this.querySelector(`.ql-editor nota-rodape[id-nota-rodape="${idNotaRodape}"]`);
+    const notaRodapeElement = this.querySelector(`.ql-editor lexml-emenda-nota-rodape[id-lexml-emenda-nota-rodape="${idNotaRodape}"]`);
     notaRodapeElement?.classList.remove('pulse');
   }
 
   editarNotaRodape(event: any): void {
     const idNotaRodape = event.target.getAttribute('idNotaRodape');
-    const notaRodapeElement = this.querySelector(`.ql-editor nota-rodape[id-nota-rodape="${idNotaRodape}"]`);
+    const notaRodapeElement = this.querySelector(`.ql-editor lexml-emenda-nota-rodape[id-lexml-emenda-nota-rodape="${idNotaRodape}"]`);
     const editorTextoRico = this.getEditorTextoRicoFromElement(notaRodapeElement);
     editorTextoRico?.focus();
     editorTextoRico.editarNotaRodape(idNotaRodape);
@@ -1295,14 +1295,14 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
 
   removerNotaRodape(event: any): void {
     const idNotaRodape = event.target.getAttribute('idNotaRodape');
-    const notaRodapeElement = this.querySelector(`.ql-editor nota-rodape[id-nota-rodape="${idNotaRodape}"]`);
+    const notaRodapeElement = this.querySelector(`.ql-editor lexml-emenda-nota-rodape[id-lexml-emenda-nota-rodape="${idNotaRodape}"]`);
     const editorTextoRico = this.getEditorTextoRicoFromElement(notaRodapeElement);
     editorTextoRico?.focus();
     editorTextoRico.removerNotaRodape(idNotaRodape);
   }
 
   getEditorTextoRicoFromElement(element: any): any {
-    return element.closest('editor-texto-rico');
+    return element.closest('lexml-emenda-editor-texto-rico');
   }
 
   getTabFromElement(element: any): any {

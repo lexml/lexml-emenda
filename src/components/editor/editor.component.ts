@@ -84,16 +84,16 @@ import { Anexo } from '../../model/emenda/emenda';
 export class EditorComponent extends connect(rootStore)(LitElement) {
   @property({ type: Object }) lexmlEtaConfig: LexmlEmendaConfig = new LexmlEmendaConfig();
 
-  @query('lexml-ajuda-modal')
+  @query('lexml-emenda-ajuda-modal')
   private ajudaModal!: AjudaModalComponent;
 
-  @query('lexml-atalhos-modal')
+  @query('lexml-emenda-atalhos-modal')
   private atalhosModal!: AtalhosModalComponent;
 
   @query('lexml-emenda-comando-modal')
   private comandoEmendaModal!: ComandoEmendaModalComponent;
 
-  @query('lexml-sufixos-modal')
+  @query('lexml-emenda-sufixos-modal')
   private sufixosModal!: SufixosModalComponent;
 
   @query('#btnAceitarTodasRevisoes')
@@ -261,13 +261,13 @@ export class EditorComponent extends connect(rootStore)(LitElement) {
 
           <span id="pos-select-paginacao"></span>
 
-          <lexml-switch-revisao
+          <lexml-emenda-switch-revisao
           class="revisao-container"
           .nomeSwitch="${this._idSwitchRevisao}"
           .nomeBadgeQuantidadeRevisao="${this._idBadgeQuantidadeRevisao}"
           modo="${this.modo}"
           >
-          </lexml-switch-revisao>
+          </lexml-emenda-switch-revisao>
 
           ${this.exibirBotoesParaTratarTodas ? this.renderBotoesParaTratarTodasRevisoes() : ''}
 
@@ -290,10 +290,10 @@ export class EditorComponent extends connect(rootStore)(LitElement) {
         <div id="lx-eta-editor"></div>
       </div>
       <div id="lx-eta-buffer"><p></p></div>
-      <lexml-ajuda-modal></lexml-ajuda-modal>
+      <lexml-emenda-ajuda-modal></lexml-emenda-ajuda-modal>
       <lexml-emenda-comando-modal></lexml-emenda-comando-modal>
-      <lexml-atalhos-modal></lexml-atalhos-modal>
-      <lexml-sufixos-modal></lexml-sufixos-modal>
+      <lexml-emenda-atalhos-modal></lexml-emenda-atalhos-modal>
+      <lexml-emenda-sufixos-modal></lexml-emenda-sufixos-modal>
       <emenda-dividida-modal></emenda-dividida-modal>
     `;
   }

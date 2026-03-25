@@ -48,7 +48,7 @@ export class LexmlEtaComponent extends connect(rootStore)(LitElement) {
       this.projetoNorma = projetoNorma;
     }
     this.loadProjetoNorma(preparaAberturaEmenda, params);
-    document.querySelector('lexml-eta-articulacao')!['style'].display = 'block';
+    document.querySelector('lexml-emenda-articulacao')!['style'].display = 'block';
   }
 
   getDispositivosEmenda(): DispositivosEmenda | undefined {
@@ -136,19 +136,19 @@ export class LexmlEtaComponent extends connect(rootStore)(LitElement) {
           display: block;
         }
 
-        lexml-eta-articulacao {
+        lexml-emenda-articulacao {
           display: none;
           height: 100%;
         }
 
-        lexml-eta-articulacao:focus {
+        lexml-emenda-articulacao:focus {
           outline: 0;
           border: 0px solid #f1f1f1;
           -webkit-box-shadow: 0px;
           box-shadow: none;
         }
       </style>
-      <lexml-eta-articulacao .lexmlEtaConfig=${this.lexmlEtaConfig}></lexml-eta-articulacao>
+      <lexml-emenda-articulacao .lexmlEtaConfig=${this.lexmlEtaConfig}></lexml-emenda-articulacao>
     `;
   }
 }
