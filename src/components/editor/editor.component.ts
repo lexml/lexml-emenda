@@ -1361,7 +1361,7 @@ export class EditorComponent extends connect(rootStore)(LitElement) {
   }
 
   private alertaGlobalVerificaCorrelacao(): void {
-    const dispositivosEmenda = (document.querySelector('lexml-eta') as LexmlEtaComponent).getDispositivosEmenda() || [];
+    const dispositivosEmenda = (document.querySelector('lexml-emenda-eta') as LexmlEtaComponent).getDispositivosEmenda() || [];
     const listaLexmlIds = Object.values(dispositivosEmenda)
       .flat(1)
       .map(obj => obj.id);

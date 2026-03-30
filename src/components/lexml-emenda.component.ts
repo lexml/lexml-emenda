@@ -147,10 +147,10 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
   @state()
   autoria = new Autoria();
 
-  @query('lexml-substituicao-termo')
+  @query('lexml-emenda-substituicao-termo')
   _substituicaoTermo?: SubstituicaoTermoComponent;
 
-  @query('lexml-eta')
+  @query('lexml-emenda-eta')
   _lexmlEta?: LexmlEtaComponent;
   @query('#lexml-emenda-editor-texto-rico-emenda')
   _lexmlEmendaTextoRico;
@@ -394,7 +394,7 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
         this.desativarMarcaRevisao();
       }
 
-      this._tabsEsquerda.show('lexml-eta');
+      this._tabsEsquerda.show('lexml-emenda-eta');
 
       if (this.modo.startsWith('emenda') && !this.isEmendaTextoLivre()) {
         setTimeout(() => {
@@ -462,7 +462,7 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
     }
     setTimeout(this.handleResize, 0);
 
-    this._tabsEsquerda.show('lexml-eta');
+    this._tabsEsquerda.show('lexml-emenda-eta');
 
     if (this.modo.startsWith('emenda') && !this.isEmendaTextoLivre()) {
       setTimeout(() => {
@@ -754,7 +754,7 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
     const getElement = (selector: string): HTMLElement => document.querySelector(selector) as HTMLElement;
 
     const justificativaTabPanel = getElement('sl-tab-panel[name="justificativa"]');
-    const emendaTabPanel = getElement('sl-tab-panel[name="lexml-eta"]');
+    const emendaTabPanel = getElement('sl-tab-panel[name="lexml-emenda-eta"]');
     const qlToolbarJustificativa = getElement('#lexml-emenda-editor-texto-rico-justificativa .ql-toolbar');
     const qlToolbarEmenda = getElement('#lx-eta-barra-ferramenta');
 
@@ -920,7 +920,7 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
           display: ${this.modo.startsWith('emenda') && !this.isEmendaTextoLivre() ? 'block' : 'none'};
           height: 100%;
         }
-        lexml-eta {
+        lexml-emenda-eta {
           font-family: var(--eta-font-serif);
           text-align: left;
         }
@@ -1064,20 +1064,20 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
         <sl-icon slot="handle" name="grip-vertical"></sl-icon>
         <div slot="start">
           <sl-tab-group id="tabs-esquerda">
-            <sl-tab slot="nav" panel="lexml-eta">Texto</sl-tab>
+            <sl-tab slot="nav" panel="lexml-emenda-eta">Texto</sl-tab>
             <sl-tab slot="nav" panel="justificativa">Justificação</sl-tab>
             <sl-tab slot="nav" panel="autoria">Destino, Data, Autoria e Impressão</sl-tab>
             <sl-tab slot="nav" panel="avisos">
               Avisos
               <div class="badge-pulse" id="contadorAvisos">${this.totalAlertas > 0 ? html` <sl-badge variant="danger" pill pulse>${this.totalAlertas}</sl-badge> ` : ''}</div>
             </sl-tab>
-            <sl-tab-panel name="lexml-eta" class="overflow-hidden">
-              <lexml-eta
+            <sl-tab-panel name="lexml-emenda-eta" class="overflow-hidden">
+              <lexml-emenda-eta
                 style="display: ${!this.isEmendaTextoLivre() && !this.isEmendaSubstituicaoTermo() ? 'block' : 'none'}"
                 id="lexmlEta"
                 .lexmlEtaConfig=${this.lexmlEmendaConfig}
                 @onchange=${this.onChange}
-              ></lexml-eta>
+              ></lexml-emenda-eta>
               <lexml-emenda-editor-texto-rico
                 style="display: ${this.isEmendaTextoLivre() ? 'block' : 'none'}"
                 modo="textoLivre"
@@ -1085,7 +1085,7 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
                 registroEvento="justificativa"
                 @onchange=${this.onChange}
               ></lexml-emenda-editor-texto-rico>
-              <lexml-substituicao-termo style="display: ${this.isEmendaSubstituicaoTermo() ? 'block' : 'none'}" @onchange=${this.onChange}></lexml-substituicao-termo>
+              <lexml-emenda-substituicao-termo style="display: ${this.isEmendaSubstituicaoTermo() ? 'block' : 'none'}" @onchange=${this.onChange}></lexml-emenda-substituicao-termo>
             </sl-tab-panel>
             <sl-tab-panel name="justificativa" class="overflow-hidden">
               <lexml-emenda-editor-texto-rico

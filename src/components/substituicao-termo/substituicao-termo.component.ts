@@ -3,7 +3,7 @@ import { customElement, query } from 'lit/decorators.js';
 import { ComandoEmenda, SubstituicaoTermo } from '../../model/emenda/emenda';
 import { ComandoEmendaBuilder } from '../../emenda/comando-emenda-builder';
 
-@customElement('lexml-substituicao-termo')
+@customElement('lexml-emenda-substituicao-termo')
 export class SubstituicaoTermoComponent extends LitElement {
   static styles = css`
     span.alerta {
@@ -164,6 +164,6 @@ export class SubstituicaoTermoComponent extends LitElement {
 
 declare global {
   interface HTMLElementTagNameMap {
-    'lexml-substituicao-termo': SubstituicaoTermoComponent;
+    'lexml-emenda-substituicao-termo': SubstituicaoTermoComponent;
   }
 }
