@@ -1,25 +1,23 @@
 {
-  "name": "@lexml/lexml-eta",
+  "name": "@lexml/lexml-emenda",
   "version": "1.8.10",
-  "description": "Webcomponent lexml-eta following open-wc recommendations",
-  "author": "lexml-eta",
+  "description": "Webcomponent lexml-emenda following open-wc recommendations",
+  "author": "lexml-emenda",
   "license": "GPL-2.0-only",
   "main": "dist/index.js",
   "module": "dist/index.js",
   "repository": {
     "type": "git",
-    "url": "https://github.com/lexml/lexml-eta.git"
+    "url": "https://github.com/lexml/lexml-emenda.git"
   },
-  "homepage": "https://github.com/lexml/lexml-eta",
+  "homepage": "https://github.com/lexml/lexml-emenda/",
   "bugs": {
-    "url": "https://github.com/lexml/lexml-eta/issues"
+    "url": "https://github.com/lexml/lexml-emenda/issues"
   },
   "keywords": [
     "lexml",
-    "lexml-eta",
-    "editor legislativo",
-    "editor de emendas",
-    "editor de texto articulado"
+    "lexml-emenda",
+    "editor de emendas"
   ],
   "files": [
     "dist"
