@@ -956,6 +956,8 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
 
         sl-split-panel {
           --divider-width: 15px;
+          --min: 70%;
+          --max: 85%;
         }
         sl-tab sl-icon {
           margin-right: 5px;
@@ -1056,6 +1058,8 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
         @media (max-width: 768px) {
           sl-split-panel {
             --divider-width: 0px;
+            --min: 100%;
+            --max: 100%;
           }
         }
       </style>
