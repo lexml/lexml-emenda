@@ -262,16 +262,66 @@ export const editorTextoRicoCss = html`
       margin-bottom: 0;
     }
 
-    .ql-editor ins {
+    .lexml-emenda-editor-texto-rico:not([data-modo='justificativa']) .ql-editor ins {
       text-decoration: none;
       background-color: #b2e6be;
-      /* #d4edda; */
     }
 
-    .ql-editor del {
+    .lexml-emenda-editor-texto-rico:not([data-modo='justificativa']) .ql-editor del {
       text-decoration: strikethrough;
       background-color: #f4a9b0;
-      /* #f8d7da; */
+    }
+
+    .lexml-emenda-editor-texto-rico[data-modo='justificativa'] .ql-editor ins {
+      color: #188038;
+      text-decoration: none;
+      background-color: transparent;
+    }
+
+    .lexml-emenda-editor-texto-rico[data-modo='justificativa'] .ql-editor del {
+      text-decoration-line: line-through;
+      text-decoration-color: #d93025;
+      text-decoration-thickness: 2px;
+      background-color: transparent;
+    }
+
+    .lexml-emenda-editor-texto-rico[data-modo='justificativa'] .ql-editor ins.revisao-selecionada {
+      --cor-moldura-revisao: #188038;
+    }
+
+    .lexml-emenda-editor-texto-rico[data-modo='justificativa'] .ql-editor del.revisao-selecionada {
+      --cor-moldura-revisao: #d93025;
+    }
+
+    .lexml-emenda-editor-texto-rico[data-modo='justificativa'] .ql-editor ins.revisao-selecionada,
+    .lexml-emenda-editor-texto-rico[data-modo='justificativa'] .ql-editor del.revisao-selecionada {
+      border-top: 2px solid var(--cor-moldura-revisao);
+      border-bottom: 2px solid var(--cor-moldura-revisao);
+      box-decoration-break: clone;
+      -webkit-box-decoration-break: clone;
+    }
+
+    .lexml-emenda-editor-texto-rico[data-modo='justificativa'] .ql-editor ins.revisao-selecionada::before,
+    .lexml-emenda-editor-texto-rico[data-modo='justificativa'] .ql-editor del.revisao-selecionada::before {
+      content: '';
+      display: inline-block;
+      width: 2px;
+      height: 0.5em;
+      background-color: var(--cor-moldura-revisao);
+      vertical-align: top;
+      margin-right: 1px;
+    }
+
+    .lexml-emenda-editor-texto-rico[data-modo='justificativa'] .ql-editor ins.revisao-selecionada::after,
+    .lexml-emenda-editor-texto-rico[data-modo='justificativa'] .ql-editor del.revisao-selecionada::after {
+      content: '';
+      display: inline-block;
+      width: 2px;
+      height: 0.5em;
+      background-color: var(--cor-moldura-revisao);
+      margin-left: 1px;
+      position: relative;
+      top: 0.35em;
     }
 
     .lexml-emenda-editor-texto-rico .ql-tooltip input:invalid {

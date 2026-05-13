@@ -6,6 +6,7 @@ import { ativarDesativarRevisaoAction } from '../../../src/model/lexml/acao/ativ
 import { atualizarUsuarioAction } from '../../../src/model/lexml/acao/atualizarUsuarioAction';
 import { ModoEdicaoEmenda } from '../../../src/model/emenda/emenda';
 import { atualizaRevisaoTextoLivre } from '../../../src/redux/elemento/reducer/atualizaRevisaoTextoLivre';
+import { Modo } from '../../../src/redux/elemento/enum/enumUtil';
 
 let editorTextoRico: EditorTextoRicoComponent;
 
@@ -86,6 +87,22 @@ describe('Testando lexml-emenda-editor-texto-rico (EditorTextoRicoComponent)', (
 
     it('Deveria possuir html "ajustado" igual a htmlEmenda', () => {
       expect(ajustaHtmlFromEditor(editorTextoRico.quill?.root.innerHTML)).to.be.equal(htmlEmenda);
+    });
+  });
+
+  describe('Testando atributos das marcas de revisao na justificativa', () => {
+    beforeEach(function () {
+      editorTextoRico.modo = Modo.JUSTIFICATIVA;
+      editorTextoRico.setContent('<p>Texto <del usuario="Teste" date="2026-05-13 10:00:00" id-revisao="1">Contratto</del></p>');
+    });
+
+    it('Texto excluido deveria desabilitar spellcheck apenas no DOM do editor', () => {
+      const del = editorTextoRico.quill?.root.querySelector('del');
+      expect(del?.getAttribute('spellcheck')).to.be.equal('false');
+
+      editorTextoRico.updateApenasTexto();
+
+      expect(editorTextoRico.texto).to.not.include('spellcheck');
     });
   });
 

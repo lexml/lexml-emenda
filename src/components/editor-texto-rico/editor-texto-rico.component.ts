@@ -186,7 +186,7 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
           <sl-icon name="x"></sl-icon>
         </sl-button>
       </div>
-      <div id="${this.id}-inner" class="lexml-emenda-editor-texto-rico" @onTableInTable=${this.onTableInTable}></div>
+      <div id="${this.id}-inner" class="lexml-emenda-editor-texto-rico" data-modo="${this.modo}" @onTableInTable=${this.onTableInTable}></div>
       <lexml-emenda-alterar-largura-tabela-coluna-modal id="lexml-alterar-largura-tabela-modal" tipo="tabela"></lexml-emenda-alterar-largura-tabela-coluna-modal>
       <lexml-emenda-alterar-largura-tabela-coluna-modal id="lexml-alterar-largura-coluna-modal" tipo="coluna"></lexml-emenda-alterar-largura-tabela-coluna-modal>
       <lexml-emenda-alterar-largura-imagem-modal id="lexml-alterar-largura-img-modal"></lexml-emenda-alterar-largura-imagem-modal>
@@ -493,12 +493,70 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
     setTimeout(() => {
       const format = range && this.quill?.getFormat(range);
       this.highLightBotaoGerenciarTabela(format);
+      this.atualizaDestaqueRevisaoSelecionada(range);
     }, 0);
   };
 
   highLightBotaoGerenciarTabela = (format: any): void => {
     format?.td ? this.elTableManagerButton?.classList.add('table-selected') : this.elTableManagerButton?.classList.remove('table-selected');
   };
+
+  private atualizaDestaqueRevisaoSelecionada(range: any): void {
+    if (this.modo !== Modo.JUSTIFICATIVA || !this.quill?.root) {
+      return;
+    }
+
+    const root = this.quill.root as HTMLElement;
+    root.querySelectorAll('.revisao-selecionada').forEach(el => el.classList.remove('revisao-selecionada'));
+
+    const elRevisao = this.getElementoRevisaoNoRange(range);
+    if (!elRevisao) {
+      return;
+    }
+
+    const idRevisao = elRevisao.getAttribute('id-revisao');
+    const tagName = elRevisao.tagName.toLowerCase();
+    if (!idRevisao) {
+      elRevisao.classList.add('revisao-selecionada');
+      return;
+    }
+
+    root.querySelectorAll(tagName).forEach(el => {
+      if (el.getAttribute('id-revisao') === idRevisao) {
+        el.classList.add('revisao-selecionada');
+      }
+    });
+  }
+
+  private getElementoRevisaoNoRange(range: any): HTMLElement | null {
+    if (!range || !this.quill) {
+      return null;
+    }
+
+    const indexes = range.length ? [range.index, range.index + range.length - 1] : [range.index, range.index - 1];
+    for (const index of indexes) {
+      if (index < 0 || index >= this.quill.getLength()) {
+        continue;
+      }
+
+      const leaf = this.quill.getLeaf(index)?.[0] as any;
+      const elRevisao = this.getElementoRevisaoMaisProximo(leaf?.domNode);
+      if (elRevisao) {
+        return elRevisao;
+      }
+    }
+
+    return null;
+  }
+
+  private getElementoRevisaoMaisProximo(node: Node | null | undefined): HTMLElement | null {
+    if (!node) {
+      return null;
+    }
+
+    const el = node.nodeType === Node.TEXT_NODE ? node.parentElement : (node as HTMLElement);
+    return (el?.closest?.('ins, del') as HTMLElement) ?? null;
+  }
 
   addBotoesExtra = (): void => {
     const toolbarContainer = this.quill!.getModule('toolbar').container;
@@ -560,6 +618,7 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
     this.quill.setContents(this.quill.clipboard.convert(textoAjustado), 'silent');
     this.configAbrindoTexto(false);
     this.notasRodape = notasRodape;
+    this.atualizaAtributosRevisaoJustificativa();
 
     setTimeout(() => {
       this.quill!.history.clear();
@@ -591,11 +650,13 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
   };
 
   updateApenasTexto = (): void => {
+    this.atualizaAtributosRevisaoJustificativa();
     const texto = this.ajustaHtml(this.quill?.root.innerHTML);
     this.texto = texto === '<p><br></p>' ? '' : texto;
   };
 
   updateTexto = (): void => {
+    this.atualizaAtributosRevisaoJustificativa();
     const texto = this.ajustaHtml(this.quill?.root.innerHTML);
     this.texto = texto === '<p><br></p>' ? '' : texto;
     this.agendarEmissaoEventoOnChange();
@@ -636,11 +697,20 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
       .replace(/ql-indent/g, 'indent')
       .replace(/ql-align-justify/g, 'align-justify')
       .replace(/ql-align-center/g, 'align-center')
-      .replace(/ql-align-right/g, 'align-right');
+      .replace(/ql-align-right/g, 'align-right')
+      .replace(/\s+spellcheck="false"/g, '');
 
     result = removeElementosTDOcultos(result);
     return (this.quill as any).notasRodape.ajustarConteudoTagsNotaRodape(result);
   };
+
+  private atualizaAtributosRevisaoJustificativa(): void {
+    if (this.modo !== Modo.JUSTIFICATIVA || !this.quill?.root) {
+      return;
+    }
+
+    (this.quill.root as HTMLElement).querySelectorAll('del').forEach(el => el.setAttribute('spellcheck', 'false'));
+  }
 
   undo = (): any => {
     this.quill?.focus();
