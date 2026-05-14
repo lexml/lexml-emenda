@@ -90,19 +90,30 @@ describe('Testando lexml-emenda-editor-texto-rico (EditorTextoRicoComponent)', (
     });
   });
 
-  describe('Testando atributos das marcas de revisao na justificativa', () => {
-    beforeEach(function () {
-      editorTextoRico.modo = Modo.JUSTIFICATIVA;
-      editorTextoRico.setContent('<p>Texto <del usuario="Teste" date="2026-05-13 10:00:00" id-revisao="1">Contratto</del></p>');
-    });
+  describe('Testando atributos das marcas de revisao no texto rico', () => {
+    const textoComRevisao = '<p>Texto <del usuario="Teste" date="2026-05-13 10:00:00" id-revisao="1">Contratto</del></p>';
 
-    it('Texto excluido deveria desabilitar spellcheck apenas no DOM do editor', () => {
+    const validarSpellcheckDoTextoExcluido = (): void => {
       const del = editorTextoRico.quill?.root.querySelector('del');
       expect(del?.getAttribute('spellcheck')).to.be.equal('false');
 
       editorTextoRico.updateApenasTexto();
 
       expect(editorTextoRico.texto).to.not.include('spellcheck');
+    };
+
+    it('Texto excluido da justificativa deveria desabilitar spellcheck apenas no DOM do editor', () => {
+      editorTextoRico.modo = Modo.JUSTIFICATIVA;
+      editorTextoRico.setContent(textoComRevisao);
+
+      validarSpellcheckDoTextoExcluido();
+    });
+
+    it('Texto excluido do texto livre deveria desabilitar spellcheck apenas no DOM do editor', () => {
+      editorTextoRico.modo = Modo.TEXTO_LIVRE;
+      editorTextoRico.setContent(textoComRevisao);
+
+      validarSpellcheckDoTextoExcluido();
     });
   });
 

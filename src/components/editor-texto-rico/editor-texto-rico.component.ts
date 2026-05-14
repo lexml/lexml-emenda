@@ -502,7 +502,7 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
   };
 
   private atualizaDestaqueRevisaoSelecionada(range: any): void {
-    if (this.modo !== Modo.JUSTIFICATIVA || !this.quill?.root) {
+    if (!this.isModoTextoRicoComRevisaoVisualAtualizada() || !this.quill?.root) {
       return;
     }
 
@@ -618,7 +618,7 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
     this.quill.setContents(this.quill.clipboard.convert(textoAjustado), 'silent');
     this.configAbrindoTexto(false);
     this.notasRodape = notasRodape;
-    this.atualizaAtributosRevisaoJustificativa();
+    this.atualizaAtributosRevisaoTextoRico();
 
     setTimeout(() => {
       this.quill!.history.clear();
@@ -650,13 +650,13 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
   };
 
   updateApenasTexto = (): void => {
-    this.atualizaAtributosRevisaoJustificativa();
+    this.atualizaAtributosRevisaoTextoRico();
     const texto = this.ajustaHtml(this.quill?.root.innerHTML);
     this.texto = texto === '<p><br></p>' ? '' : texto;
   };
 
   updateTexto = (): void => {
-    this.atualizaAtributosRevisaoJustificativa();
+    this.atualizaAtributosRevisaoTextoRico();
     const texto = this.ajustaHtml(this.quill?.root.innerHTML);
     this.texto = texto === '<p><br></p>' ? '' : texto;
     this.agendarEmissaoEventoOnChange();
@@ -704,12 +704,16 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
     return (this.quill as any).notasRodape.ajustarConteudoTagsNotaRodape(result);
   };
 
-  private atualizaAtributosRevisaoJustificativa(): void {
-    if (this.modo !== Modo.JUSTIFICATIVA || !this.quill?.root) {
+  private atualizaAtributosRevisaoTextoRico(): void {
+    if (!this.isModoTextoRicoComRevisaoVisualAtualizada() || !this.quill?.root) {
       return;
     }
 
     (this.quill.root as HTMLElement).querySelectorAll('del').forEach(el => el.setAttribute('spellcheck', 'false'));
+  }
+
+  private isModoTextoRicoComRevisaoVisualAtualizada(): boolean {
+    return this.modo === Modo.JUSTIFICATIVA || this.modo === Modo.TEXTO_LIVRE;
   }
 
   undo = (): any => {
