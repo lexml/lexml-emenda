@@ -181,7 +181,7 @@ export class SubstituicaoTermo {
 // Comentários -----------------------------
 export enum TipoLocalComentario {
   TEXTO = 'texto',
-  JUSTIFICACAO = 'justificação'
+  JUSTIFICACAO = 'justificação',
 }
 
 export class SequenciaComentario {
@@ -192,6 +192,6 @@ export class SequenciaComentario {
 
 export class Comentario {
   usuario = new Usuario();
-  dataHora = new Date().toISOString();
+  dataHora = ''; // formato "yyyy-MM-dd HH:mm:ss" ex: "2026-05-18 15:30:00"
   texto = '';
 }
