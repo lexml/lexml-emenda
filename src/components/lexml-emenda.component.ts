@@ -1,5 +1,8 @@
 import { Usuario } from './../model/revisao/usuario';
 import '@shoelace-style/shoelace/dist/components/badge/badge';
+import '@shoelace-style/shoelace/dist/components/button/button';
+import '@shoelace-style/shoelace/dist/components/dialog/dialog';
+import '@shoelace-style/shoelace/dist/components/icon/icon';
 import '@shoelace-style/shoelace/dist/components/tab-group/tab-group';
 import '@shoelace-style/shoelace/dist/components/tab-panel/tab-panel';
 import '@shoelace-style/shoelace/dist/components/tab/tab';
@@ -50,6 +53,21 @@ export interface DispositivoBloqueado {
 }
 
 type TipoCasaLegislativa = 'SF' | 'CD' | 'CN';
+
+interface ComentarioEstatico {
+  autor: string;
+  data: string;
+  texto: string;
+  editavel?: boolean;
+}
+
+interface SequenciaComentarioEstatica {
+  id: string;
+  origem: 'texto' | 'justificativa';
+  trecho: string;
+  selecionada?: boolean;
+  comentarios: ComentarioEstatico[];
+}
 
 /**
  * Parâmetros de inicialização de edição de documento
@@ -145,6 +163,9 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
   private notasRodape: NotaRodape[] = [];
 
   @state()
+  private tituloModalComentario = 'Adicionar comentário';
+
+  @state()
   autoria = new Autoria();
 
   @query('lexml-emenda-substituicao-termo')
@@ -176,6 +197,72 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
 
   @query('sl-split-panel')
   private slSplitPanel!: any;
+
+  @query('#lexml-emenda-comentario-modal')
+  private comentarioModal!: any;
+
+  @query('#lexml-emenda-comentario-textarea')
+  private comentarioTextarea!: HTMLTextAreaElement;
+
+  private readonly sequenciasComentariosEstaticas: SequenciaComentarioEstatica[] = [
+    {
+      id: 'comentario-justificativa-1',
+      origem: 'justificativa',
+      trecho: '"A presente proposta busca aprimorar os mecanismos de transparência..."',
+      selecionada: true,
+      comentarios: [
+        {
+          autor: 'Ruan Sombra',
+          data: '14/05/2026 13:40',
+          texto: 'Acho que esse trecho pode ficar mais objetivo. Talvez remover a repetição de "transparência".',
+          editavel: true,
+        },
+        {
+          autor: 'Maria Silva',
+          data: '14/05/2026 13:45',
+          texto: 'Concordo. Podemos simplificar essa parte e manter apenas a ideia principal.',
+          editavel: true,
+        },
+        {
+          autor: 'Maria Silva',
+          data: '14/05/2026 13:45',
+          texto: 'Concordo. Podemos simplificar essa parte e manter apenas a ideia principal.',
+        },
+        {
+          autor: 'Ruan Sombra',
+          data: '14/05/2026 10:50',
+          texto: 'Concordo. Podemos simplificar essa parte e manter apenas a ideia principal.',
+          editavel: true,
+        },
+      ],
+    },
+    {
+      id: 'comentario-texto-1',
+      origem: 'texto',
+      trecho: '"Fica instituído o procedimento de análise complementar..."',
+      comentarios: [
+        {
+          autor: 'João Pereira',
+          data: '13/05/2026 17:12',
+          texto: 'Esse termo "análise complementar" precisa ser melhor definido no texto.',
+          editavel: true,
+        },
+      ],
+    },
+    {
+      id: 'comentario-texto-2',
+      origem: 'texto',
+      trecho: '"Fica instituído o procedimento de análise complementar..."',
+      comentarios: [
+        {
+          autor: 'João Pereira',
+          data: '13/05/2026 17:12',
+          texto:
+            'Esse termo "análise complementar" precisa ser melhor definido no textoasdasdasd. Esse termo "análise complementar" precisa ser melhor definido no textosadasdasd. Esse termo "análise complementar" precisa ser melhor definido no texto. Esse termo "análise complementar" precisa ser melhor definido no texto.',
+        },
+      ],
+    },
+  ];
 
   async getParlamentares(): Promise<Parlamentar[]> {
     try {
@@ -963,6 +1050,9 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
           margin-right: 5px;
           font-size: 18px;
         }
+        sl-tab[panel='comentarios'] sl-icon {
+          transform: translateY(2px);
+        }
         .tab-autoria__container {
           padding: 10px;
         }
@@ -978,6 +1068,12 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
           margin: 0px;
         }
         .notas-texto-vazio {
+          padding-left: 20px;
+          color: var(--sl-color-gray-500);
+          font-style: italic;
+        }
+
+        .comentarios-texto-vazio {
           padding-left: 20px;
           color: var(--sl-color-gray-500);
           font-style: italic;
@@ -1055,6 +1151,278 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
           font-style: italic;
         }
 
+        .comentarios {
+          font-family: var(--eta-font-sans);
+          font-style: normal;
+          min-height: 100%;
+          padding: 10px;
+          background: white;
+          color: var(--sl-color-neutral-800);
+        }
+
+        .comentarios__cabecalho {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+          padding: 1rem 0px 0.5rem;
+        }
+
+        .comentarios h4 {
+          font-family: var(--eta-font-sans);
+          font-size: 1rem;
+          font-style: normal;
+          margin: 0;
+        }
+
+        .comentarios__ordenacao-container {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          color: var(--sl-color-neutral-600);
+          font-size: 0.72rem;
+        }
+
+        .comentarios__ordenacao {
+          width: 112px;
+          height: 26px;
+          border: 1px solid var(--sl-color-neutral-200);
+          border-radius: 4px;
+          color: var(--sl-color-neutral-700);
+          font: inherit;
+          font-size: 0.78rem;
+          padding: 0 20px 0 6px;
+          background: white;
+        }
+
+        .comentarios__lista {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          padding: 0;
+        }
+
+        .comentario-sequencia {
+          border: 1px solid #d9dee8;
+          border-radius: 8px;
+          background: white;
+          box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+          padding: 14px;
+        }
+
+        .comentario-sequencia--selecionada {
+          border-color: #93c5fd;
+          box-shadow: 0 0 0 2px #dbeafe, 0 1px 2px rgba(15, 23, 42, 0.08);
+        }
+
+        .comentario-sequencia__topo {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 8px;
+          border-bottom: 1px solid var(--sl-color-neutral-200);
+          padding-bottom: 10px;
+          margin-bottom: 12px;
+        }
+
+        .comentario-sequencia__origem {
+          display: inline-flex;
+          align-items: center;
+          min-height: 20px;
+          border-radius: 999px;
+          font-size: 0.72rem;
+          font-weight: 700;
+          line-height: 1;
+          padding: 0 8px;
+        }
+
+        .comentario-sequencia__origem--texto {
+          border: 1px solid #e5e7eb;
+          background: #f3f4f6;
+          color: #4b5563;
+        }
+
+        .comentario-sequencia__origem--justificativa {
+          border: 1px solid #e5e7eb;
+          background: #f3f4f6;
+          color: #4b5563;
+        }
+
+        .comentario-sequencia__acoes {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .comentario-sequencia__acao {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          border: 0;
+          background: transparent;
+          color: var(--sl-color-neutral-600);
+          cursor: pointer;
+          font: inherit;
+          font-size: 0.8rem;
+          line-height: 1;
+          padding: 0;
+        }
+
+        .comentario-sequencia__seta {
+          display: inline-block;
+          position: relative;
+          width: 11px;
+          height: 8px;
+          flex: none;
+        }
+
+        .comentario-sequencia__seta::before {
+          content: '';
+          position: absolute;
+          top: 4px;
+          left: 1px;
+          width: 9px;
+          border-top: 1.5px solid currentColor;
+        }
+
+        .comentario-sequencia__seta::after {
+          content: '';
+          position: absolute;
+          top: 1px;
+          left: 1px;
+          width: 5px;
+          height: 5px;
+          border-left: 1.5px solid currentColor;
+          border-bottom: 1.5px solid currentColor;
+          transform: rotate(45deg);
+        }
+
+        .comentario-sequencia__acao:hover {
+          color: var(--sl-color-primary-700);
+        }
+
+        .comentario-sequencia__acao--excluir {
+          color: #ef4444;
+          font-size: 1rem;
+        }
+
+        .comentario-sequencia__trecho {
+          border-left: 3px solid #f59e0b;
+          border-radius: 3px;
+          background: #fef9c3;
+          color: #7c5a11;
+          font-family: var(--eta-font-serif);
+          font-size: 0.86rem;
+          font-style: italic;
+          line-height: 1.4;
+          margin: 0 0 12px;
+          padding: 8px 12px;
+        }
+
+        .comentario-sequencia__comentarios {
+          display: flex;
+          flex-direction: column;
+          gap: 0;
+        }
+
+        .comentario-item {
+          color: #374151;
+        }
+
+        .comentario-item:not(:last-child) {
+          border-bottom: 1px solid var(--sl-color-neutral-200);
+          margin-bottom: 10px;
+          padding-bottom: 10px;
+        }
+
+        .comentario-item--resposta {
+          margin-left: 16px;
+        }
+
+        .comentario-item__cabecalho {
+          display: flex;
+          align-items: baseline;
+          justify-content: space-between;
+          gap: 12px;
+          margin-bottom: 4px;
+        }
+
+        .comentario-item__autor {
+          color: #111827;
+          font-weight: 600;
+          font-size: 0.84rem;
+        }
+
+        .comentario-item__data {
+          color: #8a94a3;
+          font-size: 0.7rem;
+          line-height: 1.2;
+          margin-left: auto;
+          padding-left: 8px;
+          white-space: nowrap;
+        }
+
+        .comentario-item__texto {
+          color: #5f6b7a;
+          font-family: var(--eta-font-sans);
+          font-size: 0.88rem;
+          line-height: 1.45;
+          margin: 0;
+        }
+
+        .comentario-item__acoes {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          justify-content: flex-end;
+          margin-top: 8px;
+        }
+
+        .comentario-item__acao {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          border: 0;
+          background: transparent;
+          color: var(--sl-color-neutral-600);
+          cursor: pointer;
+          font: inherit;
+          font-size: 0.75rem;
+          padding: 0;
+        }
+
+        .comentario-item__acao:hover {
+          color: var(--sl-color-primary-700);
+        }
+
+        .comentario-item__acao--excluir {
+          color: #ef4444;
+        }
+
+        .comentario-modal__campo {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+
+        .comentario-modal__campo label {
+          font-weight: 600;
+        }
+
+        .comentario-modal__textarea {
+          min-height: 96px;
+          resize: vertical;
+          border: 1px solid var(--sl-color-neutral-300);
+          border-radius: 4px;
+          font: inherit;
+          padding: 8px;
+        }
+
+        .comentario-modal__textarea:focus {
+          outline: 2px solid var(--sl-color-primary-200);
+          border-color: var(--sl-color-primary-500);
+        }
+
         @media (max-width: 768px) {
           sl-split-panel {
             --divider-width: 0px;
@@ -1088,6 +1456,7 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
                 id="lexml-emenda-editor-texto-rico-emenda"
                 registroEvento="justificativa"
                 @onchange=${this.onChange}
+                @abrir-modal-comentario=${this.abrirModalAdicionarComentario}
               ></lexml-emenda-editor-texto-rico>
               <lexml-emenda-substituicao-termo style="display: ${this.isEmendaSubstituicaoTermo() ? 'block' : 'none'}" @onchange=${this.onChange}></lexml-emenda-substituicao-termo>
             </sl-tab-panel>
@@ -1098,6 +1467,7 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
                 id="lexml-emenda-editor-texto-rico-justificativa"
                 registroEvento="justificativa"
                 @onchange=${this.onChange}
+                @abrir-modal-comentario=${this.abrirModalAdicionarComentario}
               ></lexml-emenda-editor-texto-rico>
             </sl-tab-panel>
             <sl-tab-panel name="autoria" class="overflow-hidden">
@@ -1122,6 +1492,14 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
                   <sl-tab slot="nav" panel="comando">
                     <sl-icon name="code"></sl-icon>
                     Comando
+                  </sl-tab>
+                `
+              : ''}
+            ${this.tabIsVisible('comentarios')
+              ? html`
+                  <sl-tab slot="nav" panel="comentarios">
+                    <sl-icon name="chat-left-text"></sl-icon>
+                    Comentários
                   </sl-tab>
                 `
               : ''}
@@ -1156,6 +1534,7 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
             <sl-tab-panel name="comando" class="overflow-hidden">
               <lexml-emenda-comando></lexml-emenda-comando>
             </sl-tab-panel>
+            <sl-tab-panel name="comentarios" class="overflow-hidden"> ${this.renderComentariosEstaticos()} </sl-tab-panel>
             <sl-tab-panel name="notas" class="overflow-hidden">
               <div class="notas-rodape">
                 <h4>Notas de rodapé</h4>
@@ -1171,12 +1550,15 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
           </sl-tab-group>
         </div>
       </sl-split-panel>
+      ${this.renderModalComentario()}
     `;
   }
 
   tabIsVisible(tab: string): boolean {
     if ((tab === 'atalhos' || tab === 'dicas') && this.modo === 'emendaSubstituicaoTermo') {
       return false;
+    } else if (tab === 'comentarios') {
+      return this.modo.startsWith('emenda') && !this.isEmendaSubstituicaoTermo();
     } else if (tab === 'notas' && (this.isEmendaTextoLivre() || this.modo === 'edicao')) {
       return true;
     }
@@ -1187,6 +1569,125 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
     this.notasRodape = this._lexmlJustificativa.notasRodape;
     this.focusOnTab('notas');
   }
+
+  renderComentariosEstaticos(): TemplateResult {
+    return html`
+      <div class="comentarios">
+        <div class="comentarios__cabecalho">
+          <h4>Comentários</h4>
+          <label class="comentarios__ordenacao-container">
+            Ordenar
+            <select class="comentarios__ordenacao" aria-label="Ordenação dos comentários">
+              <option>Recentes</option>
+              <option>Ordem no texto</option>
+            </select>
+          </label>
+        </div>
+        ${this.sequenciasComentariosEstaticas.length
+          ? html`<div class="comentarios__lista">${this.sequenciasComentariosEstaticas.map(seq => this.renderSequenciaComentario(seq))}</div>`
+          : html`<span class="comentarios-texto-vazio">Não há comentários registrados.</span>`}
+      </div>
+    `;
+  }
+
+  private renderSequenciaComentario(seq: SequenciaComentarioEstatica): TemplateResult {
+    const origemLabel = seq.origem === 'justificativa' ? 'Na justificação' : 'No texto';
+    const origemClass = seq.origem === 'justificativa' ? 'comentario-sequencia__origem--justificativa' : 'comentario-sequencia__origem--texto';
+
+    return html`
+      <article class="comentario-sequencia ${seq.selecionada ? 'comentario-sequencia--selecionada' : ''}">
+        <div class="comentario-sequencia__topo">
+          <span class="comentario-sequencia__origem ${origemClass}">${origemLabel}</span>
+          <span class="comentario-sequencia__acoes">
+            <button type="button" class="comentario-sequencia__acao" @click=${this.abrirModalResponderComentario}>
+              <span class="comentario-sequencia__seta" aria-hidden="true"></span>
+              Responder
+            </button>
+            <button
+              type="button"
+              class="comentario-sequencia__acao comentario-sequencia__acao--excluir"
+              title="Excluir sequência de comentários"
+              aria-label="Excluir sequência de comentários"
+            >
+              <sl-icon name="trash"></sl-icon>
+            </button>
+          </span>
+        </div>
+        <blockquote class="comentario-sequencia__trecho">${seq.trecho}</blockquote>
+        <div class="comentario-sequencia__comentarios">${seq.comentarios.map((comentario, index) => this.renderComentarioEstatico(comentario, index > 0))}</div>
+      </article>
+    `;
+  }
+
+  private renderComentarioEstatico(comentario: ComentarioEstatico, resposta = false): TemplateResult {
+    return html`
+      <section class="comentario-item ${resposta ? 'comentario-item--resposta' : ''}">
+        <div class="comentario-item__cabecalho">
+          <span class="comentario-item__autor">${comentario.autor}</span>
+          <span class="comentario-item__data">${comentario.data}</span>
+        </div>
+        <p class="comentario-item__texto">${comentario.texto}</p>
+        ${comentario.editavel
+          ? html`
+              <span class="comentario-item__acoes">
+                <button type="button" class="comentario-item__acao" title="Editar comentário" aria-label="Editar comentário" @click=${this.abrirModalEditarComentario}>
+                  <sl-icon name="pencil-square"></sl-icon>
+                  Editar
+                </button>
+                <button type="button" class="comentario-item__acao comentario-item__acao--excluir" title="Excluir comentário" aria-label="Excluir comentário">
+                  <sl-icon name="trash"></sl-icon>
+                  Excluir
+                </button>
+              </span>
+            `
+          : ''}
+      </section>
+    `;
+  }
+
+  private renderModalComentario(): TemplateResult {
+    return html`
+      <sl-dialog id="lexml-emenda-comentario-modal" label=${this.tituloModalComentario}>
+        <div class="comentario-modal__campo">
+          <label for="lexml-emenda-comentario-textarea">Comentário</label>
+          <textarea id="lexml-emenda-comentario-textarea" class="comentario-modal__textarea"></textarea>
+        </div>
+        <sl-button slot="footer" variant="default" @click=${this.fecharModalComentario}>Cancelar</sl-button>
+        <sl-button slot="footer" variant="primary" @click=${this.confirmarComentarioEstatico}>Comentar</sl-button>
+      </sl-dialog>
+    `;
+  }
+
+  private abrirModalAdicionarComentario = (): void => {
+    this.abrirModalComentario('Adicionar comentário');
+  };
+
+  private abrirModalResponderComentario = (): void => {
+    this.abrirModalComentario('Responder comentário');
+  };
+
+  private abrirModalEditarComentario = (): void => {
+    this.abrirModalComentario('Editar comentário');
+  };
+
+  private abrirModalComentario(titulo: string): void {
+    this.tituloModalComentario = titulo;
+    setTimeout(() => {
+      if (this.comentarioTextarea) {
+        this.comentarioTextarea.value = '';
+      }
+      this.comentarioModal?.show();
+      this.comentarioTextarea?.focus();
+    }, 0);
+  }
+
+  private fecharModalComentario = (): void => {
+    this.comentarioModal?.hide();
+  };
+
+  private confirmarComentarioEstatico = (): void => {
+    this.fecharModalComentario();
+  };
 
   renderNotasRodape(): TemplateResult {
     return !this.notasRodape.length

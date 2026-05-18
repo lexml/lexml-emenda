@@ -59,6 +59,33 @@ describe('Testando lexml-emenda-editor-texto-rico (EditorTextoRicoComponent)', (
     expect(editorTextoRico).to.be.an.instanceOf(EditorTextoRicoComponent);
   });
 
+  it('Deveria exibir o botão de adicionar comentário desabilitado quando não houver seleção', () => {
+    const botaoComentario = editorTextoRico.querySelector('button.ql-lexml-emenda-comentario') as HTMLButtonElement;
+
+    expect(botaoComentario).to.not.be.null;
+    expect(botaoComentario.disabled).to.be.true;
+  });
+
+  it('Deveria habilitar o botão de adicionar comentário e emitir evento quando houver seleção', async () => {
+    editorTextoRico.setContent('<p>Texto para comentário.</p>');
+    editorTextoRico.quill?.setSelection(0, 5);
+    editorTextoRico.onSelectionChange(editorTextoRico.quill?.getSelection());
+
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    const botaoComentario = editorTextoRico.querySelector('button.ql-lexml-emenda-comentario') as HTMLButtonElement;
+    let eventDetail: any;
+    editorTextoRico.addEventListener('abrir-modal-comentario', (ev: Event) => {
+      eventDetail = (ev as CustomEvent).detail;
+    });
+
+    botaoComentario.click();
+
+    expect(botaoComentario.disabled).to.be.false;
+    expect(eventDetail?.range?.index).to.be.equal(0);
+    expect(eventDetail?.range?.length).to.be.equal(5);
+  });
+
   it('Deveria simular o click no botão de inserir tabela', async () => {
     const tabela = editorTextoRico.querySelector('.ql-table .ql-picker-label');
     tabela?.dispatchEvent(new Event('mousedown'));

@@ -1,6 +1,6 @@
 import { html, LitElement, PropertyValues, TemplateResult } from 'lit';
 import { customElement, property, query } from 'lit/decorators.js';
-import { iconeMarginBottom, iconeTextIndent, negrito, sublinhado, iconeNotaDeRodape } from '../../../assets/icons/icons';
+import { iconeMarginBottom, iconeTextIndent, negrito, sublinhado, iconeNotaDeRodape, iconeComentario } from '../../../assets/icons/icons';
 import { Observable } from '../../util/observable';
 import { rootStore } from '../../redux/store';
 import {
@@ -44,6 +44,7 @@ const Delta = Quill.import('delta');
 
 const CLASS_BUTTON_ACEITAR_REVISAO = 'aceitar-revisao';
 const CLASS_BUTTON_REJEITAR_REVISAO = 'rejeitar-revisao';
+const CLASS_BUTTON_ADICIONAR_COMENTARIO = 'ql-lexml-emenda-comentario';
 
 @customElement('lexml-emenda-editor-texto-rico')
 export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
@@ -209,6 +210,7 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
     this.icons['text-indent'] = iconeTextIndent;
     this.icons['margin-bottom'] = iconeMarginBottom;
     this.icons['lexml-emenda-nota-rodape'] = iconeNotaDeRodape;
+    this.icons['lexml-emenda-comentario'] = iconeComentario;
   }
 
   private renderBotaoAnexo(): TemplateResult {
@@ -272,6 +274,7 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
               undo: this.undo,
               redo: this.redo,
               image: this.imageHandler,
+              'lexml-emenda-comentario': this.abrirModalComentario,
             },
           },
           aspasCurvas: true,
@@ -381,6 +384,8 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
       this.addBotoesExtra();
       this.configureTooltip();
       this.elTableManagerButton = this.querySelectorAll('span.ql-table')[1] as HTMLSpanElement;
+      this.elAdicionarComentarioButton = this.querySelector(`button.${CLASS_BUTTON_ADICIONAR_COMENTARIO}`) as HTMLButtonElement;
+      this.atualizaEstadoBotaoComentario(this.quill?.getSelection());
       this.quill?.on('text-change', this.updateTexto);
       this.quill?.on('selection-change', this.onSelectionChange);
       this.alterarLarguraColunaModal.callback = this.alterarLarguraDaColuna;
@@ -489,16 +494,46 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
   };
 
   private elTableManagerButton?: HTMLSpanElement;
+  private elAdicionarComentarioButton?: HTMLButtonElement;
+
   onSelectionChange = (range: any): void => {
     setTimeout(() => {
       const format = range && this.quill?.getFormat(range);
       this.highLightBotaoGerenciarTabela(format);
       this.atualizaDestaqueRevisaoSelecionada(range);
+      this.atualizaEstadoBotaoComentario(range);
     }, 0);
   };
 
   highLightBotaoGerenciarTabela = (format: any): void => {
     format?.td ? this.elTableManagerButton?.classList.add('table-selected') : this.elTableManagerButton?.classList.remove('table-selected');
+  };
+
+  private atualizaEstadoBotaoComentario(range: any): void {
+    if (!this.elAdicionarComentarioButton) {
+      return;
+    }
+
+    this.elAdicionarComentarioButton.disabled = !range?.length;
+  }
+
+  private abrirModalComentario = (): void => {
+    const range = this.quill?.getSelection();
+    if (!range?.length) {
+      this.atualizaEstadoBotaoComentario(range);
+      return;
+    }
+
+    this.dispatchEvent(
+      new CustomEvent('abrir-modal-comentario', {
+        bubbles: true,
+        composed: true,
+        detail: {
+          modo: this.modo,
+          range,
+        },
+      })
+    );
   };
 
   private atualizaDestaqueRevisaoSelecionada(range: any): void {
@@ -593,6 +628,7 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
     this.setTitle(toolbarContainer, 'button.ql-margin-bottom', 'Distância entre parágrafos');
     this.setTitle(toolbarContainer, 'button.ql-text-indent', 'Recuo de parágrafo');
     this.setTitle(toolbarContainer, 'button.ql-table', 'Tabela');
+    this.setTitle(toolbarContainer, 'button.ql-lexml-emenda-comentario', 'Adicionar comentário');
     this.setTitle(toolbarContainer, 'button.ql-lexml-emenda-nota-rodape', 'Nota de rodapé');
   };
 
@@ -909,5 +945,6 @@ const toolbarOptions = [
       ],
     },
   ],
+  ['lexml-emenda-comentario'],
   ['image'],
 ];
