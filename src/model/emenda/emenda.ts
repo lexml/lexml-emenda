@@ -1,5 +1,6 @@
 import { NotaRodape } from '../../components/editor-texto-rico/notaRodape';
 import { Revisao } from '../revisao/revisao';
+import { Usuario } from '../revisao/usuario';
 
 export class Emenda {
   // Metadados padronizados para o lexml-eta
@@ -26,6 +27,7 @@ export class Emenda {
   revisoes: Revisao[] = [];
   colegiadoApreciador = new ColegiadoApreciador();
   notasRodape: NotaRodape[] = [];
+  sequenciasComentario: SequenciaComentario[] = [];
 }
 
 export type MetadadosEmenda = {
@@ -174,4 +176,22 @@ export class SubstituicaoTermo {
   novoTermo = '';
   flexaoGenero = false;
   flexaoNumero = false;
+}
+
+// Comentários -----------------------------
+export enum TipoLocalComentario {
+  TEXTO = 'texto',
+  JUSTIFICACAO = 'justificação'
+}
+
+export class SequenciaComentario {
+  id = '';
+  local: TipoLocalComentario = TipoLocalComentario.JUSTIFICACAO;
+  comentarios: Comentario[] = [];
+}
+
+export class Comentario {
+  usuario = new Usuario();
+  dataHora = new Date().toISOString();
+  texto = '';
 }
