@@ -666,7 +666,7 @@ class ModuloRevisao extends Module {
         idx += op.retain;
       } else if (op.delete) {
         // Para refazer trechos removidos em modo de revisão é preciso identificar o que está sendo removido
-        const contentDeletedRange = quill.getContents(idx, op.delete);
+        const contentDeletedRange = oldContent.slice(idx, idx + op.delete);
         contentDeletedRange.ops.forEach(op2 => {
           if (op2.insert && op2.attributes?.added) {
             // Deixa remover conteúdo adicionado em modo de revisão
@@ -674,12 +674,14 @@ class ModuloRevisao extends Module {
           } else if (op2.insert && !op2.attributes?.added) {
             // Não deixa remover conteúdo adicionado FORA modo de revisão
             // Formata como removido em modo de revisão
-            acc.ops.push({ retain: op2.insert.length, attributes: { removed: this.buildAttributes(id) } });
-            idx += op2.insert.length;
-            numCaracteresRemovidos += op2.insert.length;
+            const length = typeof op2.insert === 'string' ? op2.insert.length : 1;
+            acc.ops.push({ retain: length, attributes: { ...(op2.attributes || {}), removed: this.buildAttributes(id) } });
+            idx += length;
+            numCaracteresRemovidos += length;
           } else {
-            acc.ops.push({ retain: op2.retain || op2.delete, attributes: { removed: this.buildAttributes(id) } });
-            idx += op2.retain || op2.delete;
+            const length = op2.retain || op2.delete || 1;
+            acc.ops.push({ retain: length, attributes: { ...(op2.attributes || {}), removed: this.buildAttributes(id) } });
+            idx += length;
           }
         });
       } else if (op.insert && !op.attributes?.added) {

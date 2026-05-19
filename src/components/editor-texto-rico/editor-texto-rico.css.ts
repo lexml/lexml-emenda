@@ -145,6 +145,20 @@ export const editorTextoRicoCss = html`
       flex-grow: 1;
     }
 
+    .ql-toolbar button.ql-lexml-emenda-comentario:disabled,
+    .ql-toolbar button.ql-lexml-emenda-comentario:disabled:hover,
+    .ql-toolbar button.ql-lexml-emenda-comentario:disabled:focus {
+      color: #9ca3af;
+      cursor: default;
+      opacity: 0.45;
+    }
+
+    .ql-toolbar button.ql-lexml-emenda-comentario:disabled svg,
+    .ql-toolbar button.ql-lexml-emenda-comentario:disabled:hover svg,
+    .ql-toolbar button.ql-lexml-emenda-comentario:disabled:focus svg {
+      color: #9ca3af;
+    }
+
     .ql-picker.ql-estilo .ql-picker-label {
       width: 160px;
     }
@@ -260,6 +274,30 @@ export const editorTextoRicoCss = html`
 
     .lexml-emenda-editor-texto-rico p.ql-margin-bottom-0px {
       margin-bottom: 0;
+    }
+
+    .lexml-emenda-editor-texto-rico .ql-editor comentario {
+      background-color: #fff8c5;
+    }
+
+    .lexml-emenda-editor-texto-rico .ql-editor comentario.comentario-selecionado {
+      background-color: #fdd663;
+    }
+
+    .lexml-emenda-editor-texto-rico .ql-editor comentario del {
+      background-color: inherit;
+    }
+
+    .lexml-emenda-editor-texto-rico .ql-editor del comentario {
+      background-color: #fff8c5;
+      background-image: linear-gradient(#d93025, #d93025);
+      background-position: 0 55%;
+      background-repeat: repeat-x;
+      background-size: 100% 2px;
+    }
+
+    .lexml-emenda-editor-texto-rico .ql-editor del comentario.comentario-selecionado {
+      background-color: #fdd663;
     }
 
     .lexml-emenda-editor-texto-rico:not([data-modo='justificativa']):not([data-modo='textoLivre']) .ql-editor ins {

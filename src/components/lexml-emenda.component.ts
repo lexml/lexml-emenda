@@ -17,7 +17,20 @@ import { shoelaceLightThemeStyles } from '../assets/css/shoelace.theme.light.css
 
 import { adicionarAlerta } from '../model/alerta/acao/adicionarAlerta';
 import { removerAlerta } from '../model/alerta/acao/removerAlerta';
-import { Autoria, ColegiadoApreciador, Emenda, Epigrafe, ModoEdicaoEmenda, Parlamentar, RefProposicaoEmendada, OpcoesImpressao, SubstituicaoTermo, SequenciaComentario } from '../model/emenda/emenda';
+import {
+  Autoria,
+  ColegiadoApreciador,
+  Comentario,
+  Emenda,
+  Epigrafe,
+  ModoEdicaoEmenda,
+  Parlamentar,
+  RefProposicaoEmendada,
+  OpcoesImpressao,
+  SubstituicaoTermo,
+  SequenciaComentario,
+  TipoLocalComentario,
+} from '../model/emenda/emenda';
 import { buildFakeUrn, getAno, getNumero, getSigla, getTipo } from '../model/lexml/documento/urnUtil';
 import { rootStore } from '../redux/store';
 import { ClassificacaoDocumento } from './../model/documento/classificacao';
@@ -53,21 +66,6 @@ export interface DispositivoBloqueado {
 }
 
 type TipoCasaLegislativa = 'SF' | 'CD' | 'CN';
-
-interface ComentarioEstatico {
-  autor: string;
-  data: string;
-  texto: string;
-  editavel?: boolean;
-}
-
-interface SequenciaComentarioEstatica {
-  id: string;
-  origem: 'texto' | 'justificativa';
-  trecho: string;
-  selecionada?: boolean;
-  comentarios: ComentarioEstatico[];
-}
 
 /**
  * Parâmetros de inicialização de edição de documento
@@ -207,65 +205,10 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
   @query('#lexml-emenda-comentario-textarea')
   private comentarioTextarea!: HTMLTextAreaElement;
 
-  private readonly sequenciasComentariosEstaticas: SequenciaComentarioEstatica[] = [
-    {
-      id: 'comentario-justificativa-1',
-      origem: 'justificativa',
-      trecho: '"A presente proposta busca aprimorar os mecanismos de transparência..."',
-      selecionada: true,
-      comentarios: [
-        {
-          autor: 'Ruan Sombra',
-          data: '14/05/2026 13:40',
-          texto: 'Acho que esse trecho pode ficar mais objetivo. Talvez remover a repetição de "transparência".',
-          editavel: true,
-        },
-        {
-          autor: 'Maria Silva',
-          data: '14/05/2026 13:45',
-          texto: 'Concordo. Podemos simplificar essa parte e manter apenas a ideia principal.',
-          editavel: true,
-        },
-        {
-          autor: 'Maria Silva',
-          data: '14/05/2026 13:45',
-          texto: 'Concordo. Podemos simplificar essa parte e manter apenas a ideia principal.',
-        },
-        {
-          autor: 'Ruan Sombra',
-          data: '14/05/2026 10:50',
-          texto: 'Concordo. Podemos simplificar essa parte e manter apenas a ideia principal.',
-          editavel: true,
-        },
-      ],
-    },
-    {
-      id: 'comentario-texto-1',
-      origem: 'texto',
-      trecho: '"Fica instituído o procedimento de análise complementar..."',
-      comentarios: [
-        {
-          autor: 'João Pereira',
-          data: '13/05/2026 17:12',
-          texto: 'Esse termo "análise complementar" precisa ser melhor definido no texto.',
-          editavel: true,
-        },
-      ],
-    },
-    {
-      id: 'comentario-texto-2',
-      origem: 'texto',
-      trecho: '"Fica instituído o procedimento de análise complementar..."',
-      comentarios: [
-        {
-          autor: 'João Pereira',
-          data: '13/05/2026 17:12',
-          texto:
-            'Esse termo "análise complementar" precisa ser melhor definido no textoasdasdasd. Esse termo "análise complementar" precisa ser melhor definido no textosadasdasd. Esse termo "análise complementar" precisa ser melhor definido no texto. Esse termo "análise complementar" precisa ser melhor definido no texto.',
-        },
-      ],
-    },
-  ];
+  private editorComentarioAtual?: any;
+  private rangeComentarioAtual?: any;
+  private modoComentarioAtual = '';
+  private acaoModalComentario: 'adicionar' | 'responder' | 'editar' = 'adicionar';
 
   async getParlamentares(): Promise<Parlamentar[]> {
     try {
@@ -371,6 +314,7 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
     }
     emenda.justificativa = this._lexmlJustificativa.texto;
     emenda.notasRodape = this._lexmlJustificativa.notasRodape;
+    emenda.sequenciasComentario = this.sequenciasComentario;
     emenda.autoria = this._lexmlAutoria.getAutoriaAtualizada();
     emenda.data = this._lexmlData.data || undefined;
     emenda.opcoesImpressao = this._lexmlOpcoesImpressao.opcoesImpressao;
@@ -664,6 +608,7 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
     this._lexmlDestino!.colegiadoApreciador = emenda.colegiadoApreciador;
     this._lexmlDestino!.proposicao = emenda.proposicao;
     this.notasRodape = emenda.notasRodape || [];
+    this.sequenciasComentario = emenda.sequenciasComentario || [];
     this._lexmlJustificativa.setContent(emenda.justificativa, emenda.notasRodape);
 
     if (this.isEmendaTextoLivre()) {
@@ -915,6 +860,10 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
 
     if (!this.isEmendaTextoLivre()) {
       this.buildAlertaJustificativa(comandoEmenda);
+    }
+
+    if (this.sequenciasComentario.length) {
+      this.requestUpdate();
     }
   }
 
@@ -1310,6 +1259,7 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
         }
 
         .comentario-sequencia__trecho {
+          display: block;
           border-left: 3px solid #f59e0b;
           border-radius: 3px;
           background: #fef9c3;
@@ -1319,7 +1269,30 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
           font-style: italic;
           line-height: 1.4;
           margin: 0 0 12px;
+          overflow: hidden;
           padding: 8px 12px;
+          white-space: nowrap;
+        }
+
+        .comentario-sequencia__trecho-conteudo {
+          display: inline-flex;
+          max-width: 100%;
+          min-width: 0;
+          vertical-align: bottom;
+        }
+
+        .comentario-sequencia__trecho-conteudo::before,
+        .comentario-sequencia__trecho-conteudo::after {
+          content: '"';
+          flex: none;
+        }
+
+        .comentario-sequencia__trecho-texto {
+          flex: 1;
+          min-width: 0;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
         }
 
         .comentario-sequencia__comentarios {
@@ -1586,19 +1559,20 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
             </select>
           </label>
         </div>
-        ${this.sequenciasComentariosEstaticas.length
-          ? html`<div class="comentarios__lista">${this.sequenciasComentariosEstaticas.map(seq => this.renderSequenciaComentario(seq))}</div>`
+        ${this.sequenciasComentario.length
+          ? html`<div class="comentarios__lista">${this.sequenciasComentario.map(seq => this.renderSequenciaComentario(seq))}</div>`
           : html`<span class="comentarios-texto-vazio">Não há comentários registrados.</span>`}
       </div>
     `;
   }
 
-  private renderSequenciaComentario(seq: SequenciaComentarioEstatica): TemplateResult {
-    const origemLabel = seq.origem === 'justificativa' ? 'Na justificação' : 'No texto';
-    const origemClass = seq.origem === 'justificativa' ? 'comentario-sequencia__origem--justificativa' : 'comentario-sequencia__origem--texto';
+  private renderSequenciaComentario(seq: SequenciaComentario): TemplateResult {
+    const origemLabel = seq.local === TipoLocalComentario.JUSTIFICACAO ? 'Na justificação' : 'No texto';
+    const origemClass = seq.local === TipoLocalComentario.JUSTIFICACAO ? 'comentario-sequencia__origem--justificativa' : 'comentario-sequencia__origem--texto';
+    const trecho = this.getTrechoComentario(seq);
 
     return html`
-      <article class="comentario-sequencia ${seq.selecionada ? 'comentario-sequencia--selecionada' : ''}">
+      <article class="comentario-sequencia">
         <div class="comentario-sequencia__topo">
           <span class="comentario-sequencia__origem ${origemClass}">${origemLabel}</span>
           <span class="comentario-sequencia__acoes">
@@ -1616,21 +1590,29 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
             </button>
           </span>
         </div>
-        <blockquote class="comentario-sequencia__trecho">${seq.trecho}</blockquote>
-        <div class="comentario-sequencia__comentarios">${seq.comentarios.map((comentario, index) => this.renderComentarioEstatico(comentario, index > 0))}</div>
+        <blockquote class="comentario-sequencia__trecho">
+          <span class="comentario-sequencia__trecho-conteudo">
+            <span class="comentario-sequencia__trecho-texto">${trecho}</span>
+          </span>
+        </blockquote>
+        <div class="comentario-sequencia__comentarios">
+          ${seq.comentarios.map((comentario, index) => this.renderComentarioEstatico(comentario, index > 0, seq.comentarios.length > 1))}
+        </div>
       </article>
     `;
   }
 
-  private renderComentarioEstatico(comentario: ComentarioEstatico, resposta = false): TemplateResult {
+  private renderComentarioEstatico(comentario: Comentario, resposta = false, exibirAcoes = false): TemplateResult {
+    const editavel = exibirAcoes && this.isComentarioDoUsuarioAtual(comentario);
+    const dataHoraFormatada = this.formatarDataHoraComentarioVisual(comentario.dataHora);
     return html`
       <section class="comentario-item ${resposta ? 'comentario-item--resposta' : ''}">
         <div class="comentario-item__cabecalho">
-          <span class="comentario-item__autor">${comentario.autor}</span>
-          <span class="comentario-item__data">${comentario.data}</span>
+          <span class="comentario-item__autor">${comentario.usuario?.nome || 'Anônimo'}</span>
+          <span class="comentario-item__data" title=${comentario.dataHora}>${dataHoraFormatada}</span>
         </div>
         <p class="comentario-item__texto">${comentario.texto}</p>
-        ${comentario.editavel
+        ${editavel
           ? html`
               <span class="comentario-item__acoes">
                 <button type="button" class="comentario-item__acao" title="Editar comentário" aria-label="Editar comentário" @click=${this.abrirModalEditarComentario}>
@@ -1648,6 +1630,34 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
     `;
   }
 
+  private getTrechoComentario(seq: SequenciaComentario): string {
+    const editor = this.getEditorTextoRicoByLocalComentario(seq.local);
+    const trecho = editor?.getTextoComentario?.(seq.id);
+    return trecho || 'Trecho comentado não localizado.';
+  }
+
+  private getEditorTextoRicoByLocalComentario(local: TipoLocalComentario): any {
+    return local === TipoLocalComentario.TEXTO ? this._lexmlEmendaTextoRico : this._lexmlJustificativa;
+  }
+
+  private isComentarioDoUsuarioAtual(comentario: Comentario): boolean {
+    const usuarioAtual = rootStore.getState().elementoReducer.usuario;
+    if (!usuarioAtual) {
+      return false;
+    }
+    return comentario.usuario?.id ? comentario.usuario.id === usuarioAtual.id : comentario.usuario?.nome === usuarioAtual.nome;
+  }
+
+  private formatarDataHoraComentarioVisual(dataHora: string): string {
+    const match = dataHora?.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/);
+    if (!match) {
+      return dataHora || '';
+    }
+
+    const [, ano, mes, dia, hora, minuto] = match;
+    return `${dia}/${mes}/${ano} ${hora}:${minuto}`;
+  }
+
   private renderModalComentario(): TemplateResult {
     return html`
       <sl-dialog id="lexml-emenda-comentario-modal" label=${this.tituloModalComentario}>
@@ -1661,15 +1671,21 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
     `;
   }
 
-  private abrirModalAdicionarComentario = (): void => {
+  private abrirModalAdicionarComentario = (event?: CustomEvent): void => {
+    this.acaoModalComentario = 'adicionar';
+    this.editorComentarioAtual = event?.target;
+    this.rangeComentarioAtual = event?.detail?.range;
+    this.modoComentarioAtual = event?.detail?.modo || '';
     this.abrirModalComentario('Adicionar comentário');
   };
 
   private abrirModalResponderComentario = (): void => {
+    this.acaoModalComentario = 'responder';
     this.abrirModalComentario('Responder comentário');
   };
 
   private abrirModalEditarComentario = (): void => {
+    this.acaoModalComentario = 'editar';
     this.abrirModalComentario('Editar comentário');
   };
 
@@ -1689,8 +1705,49 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
   };
 
   private confirmarComentarioEstatico = (): void => {
+    if (this.acaoModalComentario === 'adicionar') {
+      this.adicionarComentarioSelecionado();
+    }
     this.fecharModalComentario();
   };
+
+  private adicionarComentarioSelecionado(): void {
+    const textoComentario = this.comentarioTextarea?.value?.trim();
+    if (!textoComentario || !this.editorComentarioAtual || !this.rangeComentarioAtual?.length) {
+      return;
+    }
+
+    const sequenciaComentario = new SequenciaComentario();
+    sequenciaComentario.id = this.gerarIdSequenciaComentario();
+    sequenciaComentario.local = this.getLocalComentarioPorModo(this.modoComentarioAtual);
+
+    const comentario = new Comentario();
+    comentario.usuario = rootStore.getState().elementoReducer.usuario || new Usuario();
+    comentario.dataHora = this.formatarDataHoraComentario();
+    comentario.texto = textoComentario;
+    sequenciaComentario.comentarios = [comentario];
+
+    const comentarioAplicado = this.editorComentarioAtual.adicionarComentario(sequenciaComentario.id, this.rangeComentarioAtual);
+    if (!comentarioAplicado) {
+      return;
+    }
+
+    this.sequenciasComentario = [...this.sequenciasComentario, sequenciaComentario];
+    this._tabsDireita?.show('comentarios');
+  }
+
+  private getLocalComentarioPorModo(modo: string): TipoLocalComentario {
+    return modo === 'textoLivre' ? TipoLocalComentario.TEXTO : TipoLocalComentario.JUSTIFICACAO;
+  }
+
+  private gerarIdSequenciaComentario(): string {
+    return `sc${new Date().getTime()}`;
+  }
+
+  private formatarDataHoraComentario(data = new Date()): string {
+    const pad = (valor: number): string => `${valor}`.padStart(2, '0');
+    return `${data.getFullYear()}-${pad(data.getMonth() + 1)}-${pad(data.getDate())} ${pad(data.getHours())}:${pad(data.getMinutes())}:${pad(data.getSeconds())}`;
+  }
 
   renderNotasRodape(): TemplateResult {
     return !this.notasRodape.length

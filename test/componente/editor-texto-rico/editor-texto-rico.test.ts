@@ -86,6 +86,47 @@ describe('Testando lexml-emenda-editor-texto-rico (EditorTextoRicoComponent)', (
     expect(eventDetail?.range?.length).to.be.equal(5);
   });
 
+  it('Deveria marcar a seleção com tag de comentário', () => {
+    editorTextoRico.setContent('<p>Texto para comentário.</p>');
+    editorTextoRico.quill?.setSelection(0, 5);
+
+    const comentarioAdicionado = editorTextoRico.adicionarComentario('sc123');
+
+    expect(comentarioAdicionado).to.be.true;
+    expect(editorTextoRico.texto).to.include('<comentario id-sequencia-comentario="sc123">Texto</comentario>');
+  });
+
+  it('Deveria desabilitar o botão de adicionar comentário quando a seleção já possuir comentário', async () => {
+    editorTextoRico.setContent('<p>Texto para comentário.</p>');
+    editorTextoRico.quill?.setSelection(0, 5);
+    editorTextoRico.adicionarComentario('sc123');
+    editorTextoRico.quill?.setSelection(0, 5);
+    editorTextoRico.onSelectionChange(editorTextoRico.quill?.getSelection());
+
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    const botaoComentario = editorTextoRico.querySelector('button.ql-lexml-emenda-comentario') as HTMLButtonElement;
+
+    expect(botaoComentario.disabled).to.be.true;
+  });
+
+  it('Deveria manter comentario quando trecho comentado for marcado como excluido em revisao', async () => {
+    editorTextoRico.setContent('<p>Texto comentado normal.</p>');
+    editorTextoRico.quill?.setSelection(0, 15);
+    editorTextoRico.adicionarComentario('sc123');
+    (editorTextoRico.quill as any)?.revisao?.setEmRevisao(true);
+
+    editorTextoRico.quill?.deleteText(6, 16, 'user');
+
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    const ops = editorTextoRico.quill?.getContents(6, 16).ops || [];
+
+    expect(ops.some((op: any) => op.attributes?.comentario === 'sc123' && op.attributes?.removed)).to.be.true;
+    expect(ops.some((op: any) => !op.attributes?.comentario && op.attributes?.removed)).to.be.true;
+    expect(editorTextoRico.getTextoComentario('sc123')).to.be.equal('Texto comentado');
+  });
+
   it('Deveria simular o click no botão de inserir tabela', async () => {
     const tabela = editorTextoRico.querySelector('.ql-table .ql-picker-label');
     tabela?.dispatchEvent(new Event('mousedown'));

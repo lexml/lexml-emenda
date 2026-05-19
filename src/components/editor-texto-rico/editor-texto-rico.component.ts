@@ -279,6 +279,7 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
           },
           aspasCurvas: true,
           notaRodape: true,
+          comentario: true,
           table: {
             cellSelectionOnClick: false,
           },
@@ -501,6 +502,7 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
       const format = range && this.quill?.getFormat(range);
       this.highLightBotaoGerenciarTabela(format);
       this.atualizaDestaqueRevisaoSelecionada(range);
+      this.atualizaDestaqueComentarioSelecionado(range);
       this.atualizaEstadoBotaoComentario(range);
     }, 0);
   };
@@ -514,12 +516,12 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
       return;
     }
 
-    this.elAdicionarComentarioButton.disabled = !range?.length;
+    this.elAdicionarComentarioButton.disabled = !range?.length || this.rangePossuiComentario(range);
   }
 
   private abrirModalComentario = (): void => {
     const range = this.quill?.getSelection();
-    if (!range?.length) {
+    if (!range?.length || this.rangePossuiComentario(range)) {
       this.atualizaEstadoBotaoComentario(range);
       return;
     }
@@ -531,10 +533,52 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
         detail: {
           modo: this.modo,
           range,
+          texto: this.quill?.getText(range.index, range.length),
         },
       })
     );
   };
+
+  public adicionarComentario(idSequenciaComentario: string, range?: any): boolean {
+    const rangeComentario = range || this.quill?.getSelection();
+    const comentarioAdicionado = (this.quill as any)?.comentarios?.adicionar(idSequenciaComentario, rangeComentario);
+    this.atualizaEstadoBotaoComentario(this.quill?.getSelection());
+    return !!comentarioAdicionado;
+  }
+
+  public getTextoComentario(idSequenciaComentario: string): string {
+    return (this.quill as any)?.comentarios?.getTextoComentario(idSequenciaComentario) || '';
+  }
+
+  private rangePossuiComentario(range: any): boolean {
+    return !!(this.quill as any)?.comentarios?.rangePossuiComentario(range);
+  }
+
+  private atualizaDestaqueComentarioSelecionado(range: any): void {
+    if (!this.quill?.root) {
+      return;
+    }
+
+    const root = this.quill.root as HTMLElement;
+    root.querySelectorAll('comentario.comentario-selecionado').forEach(el => el.classList.remove('comentario-selecionado'));
+
+    const elComentario = this.getElementoComentarioNoRange(range);
+    if (!elComentario) {
+      return;
+    }
+
+    const idSequenciaComentario = elComentario.getAttribute('id-sequencia-comentario');
+    if (!idSequenciaComentario) {
+      elComentario.classList.add('comentario-selecionado');
+      return;
+    }
+
+    root.querySelectorAll('comentario').forEach(el => {
+      if (el.getAttribute('id-sequencia-comentario') === idSequenciaComentario) {
+        el.classList.add('comentario-selecionado');
+      }
+    });
+  }
 
   private atualizaDestaqueRevisaoSelecionada(range: any): void {
     if (!this.isModoTextoRicoComRevisaoVisualAtualizada() || !this.quill?.root) {
@@ -591,6 +635,36 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
 
     const el = node.nodeType === Node.TEXT_NODE ? node.parentElement : (node as HTMLElement);
     return (el?.closest?.('ins, del') as HTMLElement) ?? null;
+  }
+
+  private getElementoComentarioNoRange(range: any): HTMLElement | null {
+    if (!range || !this.quill) {
+      return null;
+    }
+
+    const indexes = range.length ? [range.index, range.index + range.length - 1] : [range.index, range.index - 1];
+    for (const index of indexes) {
+      if (index < 0 || index >= this.quill.getLength()) {
+        continue;
+      }
+
+      const leaf = this.quill.getLeaf(index)?.[0] as any;
+      const elComentario = this.getElementoComentarioMaisProximo(leaf?.domNode);
+      if (elComentario) {
+        return elComentario;
+      }
+    }
+
+    return null;
+  }
+
+  private getElementoComentarioMaisProximo(node: Node | null | undefined): HTMLElement | null {
+    if (!node) {
+      return null;
+    }
+
+    const el = node.nodeType === Node.TEXT_NODE ? node.parentElement : (node as HTMLElement);
+    return (el?.closest?.('comentario') as HTMLElement) ?? null;
   }
 
   addBotoesExtra = (): void => {
@@ -734,6 +808,7 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
       .replace(/ql-align-justify/g, 'align-justify')
       .replace(/ql-align-center/g, 'align-center')
       .replace(/ql-align-right/g, 'align-right')
+      .replace(/\sclass="comentario-selecionado"/g, '')
       .replace(/\s+spellcheck="false"/g, '');
 
     result = removeElementosTDOcultos(result);
@@ -909,6 +984,7 @@ const formatsOptions = [
   'width',
   'added',
   'removed',
+  'comentario',
 ];
 
 const toolbarOptions = [
