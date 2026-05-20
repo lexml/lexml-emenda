@@ -20,6 +20,8 @@ const criarSequenciaComentario = (...comentarios: Comentario[]): SequenciaComent
     comentarios,
   });
 
+const criarSequenciaComentarioComId = (id: string, ...comentarios: Comentario[]): SequenciaComentario => Object.assign(criarSequenciaComentario(...comentarios), { id });
+
 describe('LexmlEmendaComponent - comentários', () => {
   let elementoReducerAnterior: any;
 
@@ -95,5 +97,54 @@ describe('LexmlEmendaComponent - comentários', () => {
     component.editarComentarioSelecionado();
 
     expect(component.sequenciasComentario[0].comentarios[0].texto).to.equal('Texto original');
+  });
+
+  it('Deveria abrir modal de resposta para a sequência selecionada', () => {
+    const component = new LexmlEmendaComponent() as any;
+    component.sequenciasComentario = [criarSequenciaComentario(criarComentario('Texto original'))];
+
+    let tituloModal = '';
+    let textoInicial = 'mantem se nao limpar';
+    component.abrirModalComentario = (titulo: string, texto = ''): void => {
+      tituloModal = titulo;
+      textoInicial = texto;
+    };
+
+    component.abrirModalResponderComentario('sc1');
+
+    expect(component.acaoModalComentario).to.equal('responder');
+    expect(component.idSequenciaComentarioRespostaAtual).to.equal('sc1');
+    expect(component.comentarioEdicaoAtual).to.be.undefined;
+    expect(tituloModal).to.equal('Responder comentário');
+    expect(textoInicial).to.equal('');
+  });
+
+  it('Deveria adicionar resposta como último comentário da sequência selecionada', () => {
+    const component = new LexmlEmendaComponent() as any;
+    const sequenciaAlvo = criarSequenciaComentarioComId('sc1', criarComentario('Texto original'));
+    const outraSequencia = criarSequenciaComentarioComId('sc2', criarComentario('Outro comentário'));
+    component.sequenciasComentario = [sequenciaAlvo, outraSequencia];
+    component.idSequenciaComentarioRespostaAtual = 'sc1';
+    component.formatarDataHoraComentario = (): string => '2026-05-20 14:30:00';
+    Object.defineProperty(component, 'comentarioTextarea', { value: { value: ' Nova resposta ' }, configurable: true });
+
+    component.responderComentarioSelecionado();
+
+    expect(component.sequenciasComentario[0].comentarios).to.have.length(2);
+    expect(component.sequenciasComentario[0].comentarios[1].texto).to.equal('Nova resposta');
+    expect(component.sequenciasComentario[0].comentarios[1].dataHora).to.equal('2026-05-20 14:30:00');
+    expect(component.sequenciasComentario[0].comentarios[1].usuario.nome).to.equal('Fulano');
+    expect(component.sequenciasComentario[1].comentarios).to.have.length(1);
+  });
+
+  it('Não deveria adicionar resposta com texto vazio', () => {
+    const component = new LexmlEmendaComponent() as any;
+    component.sequenciasComentario = [criarSequenciaComentario(criarComentario('Texto original'))];
+    component.idSequenciaComentarioRespostaAtual = 'sc1';
+    Object.defineProperty(component, 'comentarioTextarea', { value: { value: '   ' }, configurable: true });
+
+    component.responderComentarioSelecionado();
+
+    expect(component.sequenciasComentario[0].comentarios).to.have.length(1);
   });
 });

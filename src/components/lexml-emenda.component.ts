@@ -210,6 +210,7 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
   private modoComentarioAtual = '';
   private acaoModalComentario: 'adicionar' | 'responder' | 'editar' = 'adicionar';
   private comentarioEdicaoAtual?: { idSequenciaComentario: string; indexComentario: number };
+  private idSequenciaComentarioRespostaAtual?: string;
 
   async getParlamentares(): Promise<Parlamentar[]> {
     try {
@@ -1577,7 +1578,7 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
         <div class="comentario-sequencia__topo">
           <span class="comentario-sequencia__origem ${origemClass}">${origemLabel}</span>
           <span class="comentario-sequencia__acoes">
-            <button type="button" class="comentario-sequencia__acao" @click=${this.abrirModalResponderComentario}>
+            <button type="button" class="comentario-sequencia__acao" @click=${() => this.abrirModalResponderComentario(seq.id)}>
               <span class="comentario-sequencia__seta" aria-hidden="true"></span>
               Responder
             </button>
@@ -1686,15 +1687,21 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
   private abrirModalAdicionarComentario = (event?: CustomEvent): void => {
     this.acaoModalComentario = 'adicionar';
     this.comentarioEdicaoAtual = undefined;
+    this.idSequenciaComentarioRespostaAtual = undefined;
     this.editorComentarioAtual = event?.target;
     this.rangeComentarioAtual = event?.detail?.range;
     this.modoComentarioAtual = event?.detail?.modo || '';
     this.abrirModalComentario('Adicionar comentário');
   };
 
-  private abrirModalResponderComentario = (): void => {
+  private abrirModalResponderComentario = (idSequenciaComentario: string): void => {
+    if (!this.sequenciasComentario.some(seq => seq.id === idSequenciaComentario)) {
+      return;
+    }
+
     this.acaoModalComentario = 'responder';
     this.comentarioEdicaoAtual = undefined;
+    this.idSequenciaComentarioRespostaAtual = idSequenciaComentario;
     this.abrirModalComentario('Responder comentário');
   };
 
@@ -1706,6 +1713,7 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
 
     this.acaoModalComentario = 'editar';
     this.comentarioEdicaoAtual = { idSequenciaComentario, indexComentario };
+    this.idSequenciaComentarioRespostaAtual = undefined;
     this.abrirModalComentario('Editar comentário', comentario.texto);
   };
 
@@ -1727,6 +1735,8 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
   private confirmarComentarioEstatico = (): void => {
     if (this.acaoModalComentario === 'adicionar') {
       this.adicionarComentarioSelecionado();
+    } else if (this.acaoModalComentario === 'responder') {
+      this.responderComentarioSelecionado();
     } else if (this.acaoModalComentario === 'editar') {
       this.editarComentarioSelecionado();
     }
@@ -1756,6 +1766,26 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
 
     this.sequenciasComentario = [...this.sequenciasComentario, sequenciaComentario];
     this._tabsDireita?.show('comentarios');
+  }
+
+  private responderComentarioSelecionado(): void {
+    const textoComentario = this.comentarioTextarea?.value?.trim();
+    if (!textoComentario || !this.idSequenciaComentarioRespostaAtual) {
+      return;
+    }
+
+    const resposta = new Comentario();
+    resposta.usuario = rootStore.getState().elementoReducer.usuario || new Usuario();
+    resposta.dataHora = this.formatarDataHoraComentario();
+    resposta.texto = textoComentario;
+
+    this.sequenciasComentario = this.sequenciasComentario.map(seq => {
+      if (seq.id !== this.idSequenciaComentarioRespostaAtual) {
+        return seq;
+      }
+
+      return Object.assign(new SequenciaComentario(), seq, { comentarios: [...seq.comentarios, resposta] });
+    });
   }
 
   private editarComentarioSelecionado(): void {
