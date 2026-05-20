@@ -70,10 +70,16 @@ class ModuloComentario extends Module {
   }
 
   getTextoComentario(idSequenciaComentario: string): string {
-    return this.findNodesById(idSequenciaComentario)
-      .map(node => node.textContent?.trim())
-      .filter(Boolean)
-      .join(' ');
+    return this.quill
+      .getContents()
+      .ops.reduce((texto: string, op: any) => {
+        if (typeof op.insert !== 'string' || op.attributes?.[COMENTARIO_FORMAT] !== idSequenciaComentario) {
+          return texto;
+        }
+
+        return texto + op.insert;
+      }, '')
+      .trim();
   }
 }
 

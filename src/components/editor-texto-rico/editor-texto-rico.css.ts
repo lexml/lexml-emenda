@@ -374,6 +374,17 @@ export const editorTextoRicoCss = html`
       top: 0.35em;
     }
 
+    .lexml-emenda-editor-texto-rico[data-modo='justificativa'] .ql-editor ins.revisao-selecionada.revisao-fragmento-continua-anterior::before,
+    .lexml-emenda-editor-texto-rico[data-modo='justificativa'] .ql-editor del.revisao-selecionada.revisao-fragmento-continua-anterior::before,
+    .lexml-emenda-editor-texto-rico[data-modo='textoLivre'] .ql-editor ins.revisao-selecionada.revisao-fragmento-continua-anterior::before,
+    .lexml-emenda-editor-texto-rico[data-modo='textoLivre'] .ql-editor del.revisao-selecionada.revisao-fragmento-continua-anterior::before,
+    .lexml-emenda-editor-texto-rico[data-modo='justificativa'] .ql-editor ins.revisao-selecionada.revisao-fragmento-continua-proximo::after,
+    .lexml-emenda-editor-texto-rico[data-modo='justificativa'] .ql-editor del.revisao-selecionada.revisao-fragmento-continua-proximo::after,
+    .lexml-emenda-editor-texto-rico[data-modo='textoLivre'] .ql-editor ins.revisao-selecionada.revisao-fragmento-continua-proximo::after,
+    .lexml-emenda-editor-texto-rico[data-modo='textoLivre'] .ql-editor del.revisao-selecionada.revisao-fragmento-continua-proximo::after {
+      content: none;
+    }
+
     .lexml-emenda-editor-texto-rico .ql-tooltip input:invalid {
       color: red;
     }

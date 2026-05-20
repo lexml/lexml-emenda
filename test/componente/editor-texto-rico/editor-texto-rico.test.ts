@@ -10,6 +10,28 @@ import { Modo } from '../../../src/redux/elemento/enum/enumUtil';
 
 let editorTextoRico: EditorTextoRicoComponent;
 
+const limparTooltipsRevisao = (): void => {
+  document.querySelectorAll('.tooltip-revisao').forEach(el => el.remove());
+};
+
+const criarRect = (left: number, top: number, width: number, height: number): DOMRect =>
+  ({
+    left,
+    top,
+    width,
+    height,
+    right: left + width,
+    bottom: top + height,
+    x: left,
+    y: top,
+    toJSON: () => ({}),
+  } as DOMRect);
+
+const definirRect = (el: HTMLElement, rect: DOMRect): void => {
+  Object.defineProperty(el, 'getBoundingClientRect', { value: () => rect, configurable: true });
+  Object.defineProperty(el, 'getClientRects', { value: () => [rect], configurable: true });
+};
+
 const htmlEditor =
   '<p>Parágrafo alinhado à esquerda.</p><p class="ql-align-center">Parágrafo centralizado.</p><p class="ql-align-right">Parágrafo alinhado à direita.</p><p class="ql-align-justify">Parágrafo justificado.</p><table table_id="h2tap0hfojd" border="1"><tr row_id="ghi2y63a2wp"><td class="td-q" table_id="h2tap0hfojd" row_id="ghi2y63a2wp" cell_id="o2xtredkgr"><p>1</p></td><td class="td-q" table_id="h2tap0hfojd" row_id="ghi2y63a2wp" cell_id="y3kpm6x0qp8"><p>2</p></td><td class="td-q" table_id="h2tap0hfojd" row_id="ghi2y63a2wp" cell_id="mq6yrrboj9n"><p>3</p></td><td class="td-q" table_id="h2tap0hfojd" row_id="ghi2y63a2wp" cell_id="0xai4ouu7g8" colspan="2" rowspan="1"><p>4 5</p></td><td cell_id="87sznwm1sm6" row_id="ghi2y63a2wp" table_id="h2tap0hfojd" merge_id="0xai4ouu7g8"><p><br></p></td></tr><tr row_id="u6x50lx471h"><td class="td-q" table_id="h2tap0hfojd" row_id="u6x50lx471h" cell_id="u3bfb5o0u1q"><p>6</p></td><td class="td-q" table_id="h2tap0hfojd" row_id="u6x50lx471h" cell_id="gun68mala0v" colspan="1" rowspan="2"><p>7</p><p>12</p></td><td class="td-q" table_id="h2tap0hfojd" row_id="u6x50lx471h" cell_id="1347b2f1wgc"><p>8</p></td><td class="td-q" table_id="h2tap0hfojd" row_id="u6x50lx471h" cell_id="897bot8bdtq"><p>9</p></td><td class="td-q" table_id="h2tap0hfojd" row_id="u6x50lx471h" cell_id="3wis8gkd39v"><p>10</p></td></tr><tr row_id="tf6pmpb0u8"><td class="td-q" table_id="h2tap0hfojd" row_id="tf6pmpb0u8" cell_id="2zcd2xzlgm4"><p>11</p></td><td cell_id="sij2a8lbxsn" row_id="tf6pmpb0u8" table_id="h2tap0hfojd" merge_id="gun68mala0v"><p><br></p></td><td class="td-q" table_id="h2tap0hfojd" row_id="tf6pmpb0u8" cell_id="gctz0gcm4no"><p>13</p></td><td class="td-q" table_id="h2tap0hfojd" row_id="tf6pmpb0u8" cell_id="yvdp5cr7kb"><p>14</p></td><td class="td-q" table_id="h2tap0hfojd" row_id="tf6pmpb0u8" cell_id="a34mcja4ld5"><p>15</p></td></tr></table><p>Parágrafo final.</p>';
 
@@ -51,6 +73,10 @@ describe('Testando lexml-emenda-editor-texto-rico (EditorTextoRicoComponent)', (
     const usuario = new Usuario();
     usuario.nome = 'Teste';
     rootStore.dispatch(atualizarUsuarioAction.execute(usuario));
+  });
+
+  afterEach(function () {
+    limparTooltipsRevisao();
   });
 
   it('Deveria exibir o editor', () => {
@@ -125,6 +151,146 @@ describe('Testando lexml-emenda-editor-texto-rico (EditorTextoRicoComponent)', (
     expect(ops.some((op: any) => op.attributes?.comentario === 'sc123' && op.attributes?.removed)).to.be.true;
     expect(ops.some((op: any) => !op.attributes?.comentario && op.attributes?.removed)).to.be.true;
     expect(editorTextoRico.getTextoComentario('sc123')).to.be.equal('Texto comentado');
+  });
+
+  it('Deveria remontar trecho comentado sem espacos artificiais quando palavra for dividida por revisao', async () => {
+    const texto = 'malasessadaasdasdsdasduada';
+    editorTextoRico.setContent(`<p>${texto}</p>`);
+    editorTextoRico.quill?.setSelection(0, texto.length);
+    editorTextoRico.adicionarComentario('sc123');
+    (editorTextoRico.quill as any)?.revisao?.setEmRevisao(true);
+
+    editorTextoRico.quill?.deleteText(10, 4, 'user');
+
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    expect(editorTextoRico.getTextoComentario('sc123')).to.be.equal(texto);
+  });
+
+  it('Deveria preservar comentario ao aceitar insercao dentro de trecho comentado', async () => {
+    editorTextoRico.setContent('<p>Texto base.</p>');
+    editorTextoRico.quill?.setSelection(0, 10);
+    editorTextoRico.adicionarComentario('sc123');
+    (editorTextoRico.quill as any)?.revisao?.setEmRevisao(true);
+
+    editorTextoRico.quill?.insertText(6, 'novo ', 'user');
+
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    const ins = editorTextoRico.quill?.root.querySelector('ins') as HTMLElement;
+    (editorTextoRico.quill as any)?.revisao?.revisar([ins], true);
+
+    expect(editorTextoRico.quill?.root.querySelector('ins')).to.be.null;
+    expect(editorTextoRico.getTextoComentario('sc123')).to.be.equal('Texto novo base');
+  });
+
+  it('Deveria preservar comentario ao rejeitar exclusao dentro de trecho comentado', async () => {
+    editorTextoRico.setContent('<p>Texto base.</p>');
+    editorTextoRico.quill?.setSelection(0, 10);
+    editorTextoRico.adicionarComentario('sc123');
+    (editorTextoRico.quill as any)?.revisao?.setEmRevisao(true);
+
+    editorTextoRico.quill?.deleteText(6, 4, 'user');
+
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    const del = editorTextoRico.quill?.root.querySelector('del') as HTMLElement;
+    (editorTextoRico.quill as any)?.revisao?.revisar([del], false);
+
+    expect(editorTextoRico.quill?.root.querySelector('del')).to.be.null;
+    expect(editorTextoRico.getTextoComentario('sc123')).to.be.equal('Texto base');
+  });
+
+  it('Deveria permitir adicionar comentario a partir do tooltip de revisao', () => {
+    editorTextoRico.modo = Modo.JUSTIFICATIVA;
+    editorTextoRico.setContent('<p>Texto <del usuario="Teste" date="2026-05-19 13:00:00" id-revisao="rev1">excluido</del> normal.</p>');
+
+    const del = editorTextoRico.quill?.root.querySelector('del') as HTMLElement;
+    let eventDetail: any;
+    editorTextoRico.addEventListener('abrir-modal-comentario', (ev: Event) => {
+      eventDetail = (ev as CustomEvent).detail;
+    });
+
+    del.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    const botaoComentarioRevisao = document.body.querySelector('#button-adicionar-comentario-revisao') as HTMLButtonElement;
+
+    expect(botaoComentarioRevisao).to.not.be.null;
+    expect(botaoComentarioRevisao.querySelector('#comentario-plus')).to.not.be.null;
+    botaoComentarioRevisao.click();
+    expect(eventDetail?.modo).to.be.equal(Modo.JUSTIFICATIVA);
+    expect(eventDetail?.range?.index).to.be.equal(6);
+    expect(eventDetail?.range?.length).to.be.equal(del.textContent?.length);
+    expect(editorTextoRico.quill?.getSelection()?.index).to.be.equal(eventDetail.range.index);
+    expect(editorTextoRico.quill?.getSelection()?.length).to.be.equal(eventDetail.range.length);
+  });
+
+  it('Nao deveria selecionar texto normal entre fragmentos de uma mesma revisao ao adicionar comentario pelo tooltip', () => {
+    editorTextoRico.modo = Modo.JUSTIFICATIVA;
+    editorTextoRico.setContent(
+      '<p><del usuario="Teste" date="2026-05-19 13:00:00" id-revisao="rev1">primeiro</del> normal <del usuario="Teste" date="2026-05-19 13:00:00" id-revisao="rev1">segundo</del></p>'
+    );
+
+    const del = editorTextoRico.quill?.root.querySelector('del') as HTMLElement;
+    let eventDetail: any;
+    editorTextoRico.addEventListener('abrir-modal-comentario', (ev: Event) => {
+      eventDetail = (ev as CustomEvent).detail;
+    });
+
+    del.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    const botaoComentarioRevisao = document.body.querySelector('#button-adicionar-comentario-revisao') as HTMLButtonElement;
+    botaoComentarioRevisao.click();
+
+    expect(eventDetail?.range?.index).to.be.equal(0);
+    expect(eventDetail?.range?.length).to.be.equal('primeiro'.length);
+    expect(eventDetail?.texto).to.be.equal('primeiro');
+  });
+
+  it('Deveria marcar fragmentos continuos da mesma revisao para remover moldura interna', async () => {
+    editorTextoRico.modo = Modo.JUSTIFICATIVA;
+    editorTextoRico.setContent(
+      '<p>Mauris ege<comentario id-sequencia-comentario="sc123">t euismod <ins usuario="Teste" date="2026-05-19 13:00:00" id-revisao="rev1">12</ins></comentario><ins usuario="Teste" date="2026-05-19 13:00:00" id-revisao="rev1">3456</ins>ma</p>'
+    );
+
+    const fragmentos = Array.from(editorTextoRico.quill?.root.querySelectorAll('ins') || []) as HTMLElement[];
+    const blotPrimeiroFragmento = Quill.find(fragmentos[0]);
+    const indexDentroPrimeiroFragmento = editorTextoRico.quill!.getIndex(blotPrimeiroFragmento) + 1;
+    editorTextoRico.quill?.setSelection(indexDentroPrimeiroFragmento, 0);
+    editorTextoRico.onSelectionChange({ index: indexDentroPrimeiroFragmento, length: 0 });
+
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    expect(fragmentos[0].classList.contains('revisao-fragmento-continua-proximo')).to.be.true;
+    expect(fragmentos[1].classList.contains('revisao-fragmento-continua-anterior')).to.be.true;
+  });
+
+  it('Deveria centralizar tooltip sobre fragmentos continuos da mesma revisao na mesma linha', () => {
+    editorTextoRico.modo = Modo.JUSTIFICATIVA;
+    editorTextoRico.setContent(
+      '<p>Mauris ege<comentario id-sequencia-comentario="sc123">t euismod <ins usuario="Teste" date="2026-05-19 13:00:00" id-revisao="rev1">12</ins></comentario><ins usuario="Teste" date="2026-05-19 13:00:00" id-revisao="rev1">3456</ins>ma</p>'
+    );
+
+    const fragmentos = Array.from(editorTextoRico.quill?.root.querySelectorAll('ins') || []) as HTMLElement[];
+    definirRect(fragmentos[0], criarRect(300, 50, 20, 16));
+    definirRect(fragmentos[1], criarRect(320, 50, 60, 16));
+
+    fragmentos[0].dispatchEvent(new MouseEvent('click', { bubbles: true, clientY: 58 }));
+
+    const tooltip = document.body.querySelector('.tooltip-revisao') as HTMLElement;
+    const centroTooltip = Number.parseFloat(tooltip.style.left) - window.scrollX + tooltip.clientWidth / 2;
+
+    expect(centroTooltip).to.be.closeTo(340, 1);
+  });
+
+  it('Nao deveria exibir botao de adicionar comentario no tooltip quando revisao ja possuir comentario', () => {
+    editorTextoRico.setContent('<p>Texto <del usuario="Teste" date="2026-05-19 13:00:00" id-revisao="rev1">excluido</del> normal.</p>');
+    editorTextoRico.quill?.setSelection(6, 4);
+    editorTextoRico.adicionarComentario('sc123');
+
+    const del = editorTextoRico.quill?.root.querySelector('del') as HTMLElement;
+
+    del.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+    expect(document.body.querySelector('#button-adicionar-comentario-revisao')).to.be.null;
   });
 
   it('Deveria simular o click no botão de inserir tabela', async () => {

@@ -287,6 +287,7 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
             usuario: rootStore.getState().elementoReducer.usuario?.nome || 'Anônimo',
             emRevisao: false,
             gerenciarKeydown: true,
+            modo: this.modo,
             tableModule: TableModule,
             tableTrick: TableTrick,
           },
@@ -587,6 +588,8 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
 
     const root = this.quill.root as HTMLElement;
     root.querySelectorAll('.revisao-selecionada').forEach(el => el.classList.remove('revisao-selecionada'));
+    root.querySelectorAll('.revisao-fragmento-continua-proximo').forEach(el => el.classList.remove('revisao-fragmento-continua-proximo'));
+    root.querySelectorAll('.revisao-fragmento-continua-anterior').forEach(el => el.classList.remove('revisao-fragmento-continua-anterior'));
 
     const elRevisao = this.getElementoRevisaoNoRange(range);
     if (!elRevisao) {
@@ -603,6 +606,26 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
     root.querySelectorAll(tagName).forEach(el => {
       if (el.getAttribute('id-revisao') === idRevisao) {
         el.classList.add('revisao-selecionada');
+      }
+    });
+    this.atualizaFragmentosContinuosRevisaoSelecionada(root, tagName, idRevisao);
+  }
+
+  private atualizaFragmentosContinuosRevisaoSelecionada(root: HTMLElement, tagName: string, idRevisao: string): void {
+    const fragmentos = Array.from(root.querySelectorAll(`${tagName}.revisao-selecionada`))
+      .filter(el => el.getAttribute('id-revisao') === idRevisao)
+      .map(el => {
+        const blot = Quill.find(el);
+        return blot ? { el, index: this.quill!.getIndex(blot), length: blot.length() } : null;
+      })
+      .filter(Boolean)
+      .sort((a: any, b: any) => a.index - b.index) as { el: Element; index: number; length: number }[];
+
+    fragmentos.forEach((fragmento, index) => {
+      const proximo = fragmentos[index + 1];
+      if (proximo && fragmento.index + fragmento.length === proximo.index) {
+        fragmento.el.classList.add('revisao-fragmento-continua-proximo');
+        proximo.el.classList.add('revisao-fragmento-continua-anterior');
       }
     });
   }

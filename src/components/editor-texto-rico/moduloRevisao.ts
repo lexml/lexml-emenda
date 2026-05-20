@@ -3,6 +3,7 @@
 /* eslint-disable eqeqeq */
 
 import { generateUUID } from '../../util/uuid';
+import { iconeComentario } from '../../../assets/icons/icons';
 
 /* eslint-disable prefer-const */
 const Delta = Quill.import('delta');
@@ -11,6 +12,15 @@ const Module = Quill.import('core/module');
 const Inline = Quill.import('blots/inline');
 const Clipboard = Quill.import('modules/clipboard');
 const Keyboard = Quill.import('modules/keyboard');
+
+type RectReferencia = {
+  top: number;
+  right: number;
+  bottom: number;
+  left: number;
+  width: number;
+  height: number;
+};
 
 // --------------------------------------------------------------------------------------------------------------------
 // --------------------------------------------------------------------------------------------------------------------
@@ -197,6 +207,7 @@ class ModuloRevisao extends Module {
   emRevisao = false;
   gerenciarKeydown = true;
   usuario;
+  modo = '';
   tableModule;
   tableTrick;
   isAbrindoTexto = false;
@@ -218,6 +229,7 @@ class ModuloRevisao extends Module {
     // this.quill.options.formats.push(...['added', 'removed']);
 
     this.usuario = options.usuario;
+    this.modo = options.modo || '';
     this.emRevisao = options.emRevisao ?? false;
     this.gerenciarKeydown = options.gerenciarKeydown ?? true;
     this.tableModule = options.tableModule;
@@ -262,7 +274,7 @@ class ModuloRevisao extends Module {
 
   tratarClick(event: any) {
     const elRevisao = this.getTagRevisaoMaisProxima(event.target);
-    elRevisao && this.mostrarTooltipRevisao(elRevisao);
+    elRevisao && this.mostrarTooltipRevisao(elRevisao, event);
   }
 
   revisarTodos(aceitar: boolean) {
@@ -272,23 +284,14 @@ class ModuloRevisao extends Module {
   revisar(elementosRevisao: HTMLElement[], aceitar: boolean, todos = false) {
     if (!this.emRevisao) return;
 
-    elementosRevisao
-      .filter(el => this.isTagRevisao(el))
-      .forEach(elRevisao => {
-        const isTagIns = elRevisao.tagName === 'INS';
-        const blot = Quill.find(elRevisao);
-        this.ignorarEventoTextChange = true;
-
-        if (blot !== null) {
-          if ((aceitar && !isTagIns) || (!aceitar && isTagIns)) {
-            const index = this.quill.getIndex(blot);
-            const length = blot.length();
-            this.quill.updateContents(new Delta().retain(index).delete(length), 'user');
-          } else {
-            blot.format(isTagIns ? 'added' : 'removed', false, 'user');
-          }
-        }
-      });
+    const elementosValidos = elementosRevisao.filter(el => this.isTagRevisao(el));
+    const revisarComDeltaSeguro = elementosValidos.some(elRevisao => this.revisaoPossuiComentario(elRevisao));
+    if (revisarComDeltaSeguro) {
+      const revisoes = this.getRevisoesAlvo(elementosValidos, aceitar);
+      this.revisarPorDelta(revisoes, aceitar);
+    } else {
+      this.revisarPorBlot(elementosValidos, aceitar);
+    }
 
     //força o revisar quando é "todos" e ainda sobrou revisões no quill
     if (todos && this.getRevisoes().length > 0) {
@@ -296,17 +299,117 @@ class ModuloRevisao extends Module {
     }
   }
 
+  private revisarPorBlot(elementosRevisao: HTMLElement[], aceitar: boolean): void {
+    elementosRevisao.forEach(elRevisao => this.revisarElementoPorBlot(elRevisao, aceitar));
+  }
+
+  private getRevisoesAlvo(elementosRevisao: HTMLElement[], aceitar: boolean): { tipo: 'added' | 'removed'; id: string }[] {
+    const revisoes: { tipo: 'added' | 'removed'; id: string }[] = [];
+    const chaves = new Set<string>();
+
+    elementosRevisao.forEach(elRevisao => {
+      const tipo = this.getTipoRevisao(elRevisao);
+      const id = this.getIdRevisao(elRevisao);
+
+      if (!tipo || !id) {
+        this.revisarElementoPorBlot(elRevisao, aceitar);
+        return;
+      }
+
+      const chave = `${tipo}:${id}`;
+      if (chaves.has(chave)) {
+        return;
+      }
+
+      chaves.add(chave);
+      revisoes.push({ tipo, id });
+    });
+
+    return revisoes;
+  }
+
+  private revisarElementoPorBlot(elRevisao: HTMLElement, aceitar: boolean): void {
+    const isTagIns = elRevisao.tagName === 'INS';
+    const blot = Quill.find(elRevisao);
+    this.ignorarEventoTextChange = true;
+
+    if (blot !== null) {
+      if ((aceitar && !isTagIns) || (!aceitar && isTagIns)) {
+        const index = this.quill.getIndex(blot);
+        const length = blot.length();
+        this.quill.updateContents(new Delta().retain(index).delete(length), 'user');
+      } else {
+        blot.format(isTagIns ? 'added' : 'removed', false, 'user');
+      }
+    }
+  }
+
+  private revisarPorDelta(revisoes: { tipo: 'added' | 'removed'; id: string }[], aceitar: boolean): void {
+    if (!revisoes.length) {
+      return;
+    }
+
+    const chaves = new Set(revisoes.map(revisao => `${revisao.tipo}:${revisao.id}`));
+    const ops: any[] = [];
+    let houveAlteracao = false;
+
+    this.quill.getContents().ops.forEach((op: any) => {
+      const tipo = op.attributes?.added ? 'added' : op.attributes?.removed ? 'removed' : null;
+      const id = tipo ? this.getIdRevisaoFromValue(op.attributes[tipo]) : '';
+
+      if (!tipo || !chaves.has(`${tipo}:${id}`)) {
+        ops.push(op);
+        return;
+      }
+
+      const isAdded = tipo === 'added';
+      const excluir = (aceitar && !isAdded) || (!aceitar && isAdded);
+      houveAlteracao = true;
+
+      if (excluir) {
+        return;
+      }
+
+      const attributes = { ...(op.attributes || {}) };
+      delete attributes[tipo];
+      if (attributes.added === false) {
+        delete attributes.added;
+      }
+      if (attributes.removed === false) {
+        delete attributes.removed;
+      }
+
+      const opSemRevisao: any = { insert: op.insert };
+      if (Object.keys(attributes).length) {
+        opSemRevisao.attributes = attributes;
+      }
+      ops.push(opSemRevisao);
+    });
+
+    if (!houveAlteracao) {
+      return;
+    }
+
+    const range = this.quill.getSelection();
+    this.ignorarEventoTextChange = true;
+    this.quill.setContents(new Delta(ops), 'user');
+    if (range) {
+      this.quill.setSelection(Math.min(range.index, this.quill.getLength() - 1), 0, Quill.sources.SILENT);
+    }
+  }
+
   padTo2Digits(num: number): string {
     return num.toString().padStart(2, '0');
   }
 
-  private mostrarTooltipRevisao(elRevisao: HTMLElement): void {
+  private mostrarTooltipRevisao(elRevisao: HTMLElement, event?: MouseEvent): void {
     if (!elRevisao) return;
 
     const tooltip = document.createElement('div');
     tooltip.classList.add('tooltip-revisao');
 
     const data = new Date(elRevisao.getAttribute('date') || '');
+    const exibirBotaoAdicionarComentario = !this.revisaoPossuiComentario(elRevisao);
 
     tooltip.innerHTML = `
         <style>
@@ -346,6 +449,15 @@ class ModuloRevisao extends Module {
           width: 24px;
           height: 24px;
         }
+        .tooltip-revisao__actions #button-adicionar-comentario-revisao svg {
+          fill: currentColor;
+          stroke: none;
+          width: 14px;
+          height: 14px;
+        }
+        .tooltip-revisao__actions #button-adicionar-comentario-revisao .ql-fill {
+          fill: currentColor;
+        }
         .tooltip-revisao button:hover {
           background-color: #ddd;
         }
@@ -381,6 +493,14 @@ class ModuloRevisao extends Module {
               <path d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.267.267 0 0 1 .02-.022z"/>
             </svg>
           </button>
+          ${
+            exibirBotaoAdicionarComentario
+              ? `
+          <button id="button-adicionar-comentario-revisao" aria-label="Adicionar comentário" title="Adicionar comentário">
+            ${iconeComentario}
+          </button>`
+              : ''
+          }
         </div>
       </div>
       `;
@@ -389,31 +509,53 @@ class ModuloRevisao extends Module {
     document.body.appendChild(tooltip);
 
     const fnActionRevisao = (event: any, aceitar: boolean) => {
-      const elementos = [...this.quill.root.querySelectorAll(`${elRevisao.tagName}[id-revisao="${elRevisao.getAttribute('id-revisao')}"]`)];
-      this.revisar(elementos, aceitar);
+      this.revisar(this.getElementosMesmaRevisao(elRevisao), aceitar);
       closeTooltip(event);
     };
 
-    tooltip.querySelector('#button-rejeitar-revisao')!.addEventListener('click', (event: any) => fnActionRevisao(event, false));
-    tooltip.querySelector('#button-aceitar-revisao')!.addEventListener('click', (event: any) => fnActionRevisao(event, true));
+    tooltip.querySelector('#button-rejeitar-revisao')!.addEventListener('click', (event: any) => {
+      event.preventDefault();
+      event.stopPropagation();
+      fnActionRevisao(event, false);
+    });
+    tooltip.querySelector('#button-aceitar-revisao')!.addEventListener('click', (event: any) => {
+      event.preventDefault();
+      event.stopPropagation();
+      fnActionRevisao(event, true);
+    });
+    tooltip.querySelector('#button-adicionar-comentario-revisao')?.addEventListener('click', (event: any) => {
+      event.preventDefault();
+      event.stopPropagation();
+      this.adicionarComentarioNaRevisao(elRevisao);
+      closeTooltip(event, false);
+    });
 
-    this.ajustaPosicaoTooltip(tooltip, elRevisao);
+    this.ajustaPosicaoTooltip(tooltip, elRevisao, event?.clientY);
+    const ajustaTooltipOnResize = (): void => this.ajustaPosicaoTooltip(tooltip, elRevisao, event?.clientY);
+    let tooltipFechando = false;
 
-    const closeTooltip = (e: Event) => {
+    const closeTooltip = (e: Event, restaurarFocoEditor = true) => {
       if (e.type === 'click') {
         limpaTooltip();
       } else if (e.type === 'keydown' && (e as KeyboardEvent).key === 'Escape') {
         limpaTooltip();
       }
-      setTimeout(() => this.quill.root.focus(), 0);
+      if (restaurarFocoEditor) {
+        setTimeout(() => this.quill.root.focus(), 0);
+      }
     };
 
     const limpaTooltip = () => {
+      if (tooltipFechando) {
+        return;
+      }
+      tooltipFechando = true;
       tooltip.style.opacity = '0';
       setTimeout(() => {
         tooltip.remove();
         document.removeEventListener('click', closeTooltip);
         document.removeEventListener('keydown', closeTooltip);
+        window.removeEventListener('resize', ajustaTooltipOnResize);
       }, 300);
     };
 
@@ -423,16 +565,133 @@ class ModuloRevisao extends Module {
       tooltip.style.opacity = '1';
     }, 0);
 
-    window.addEventListener('resize', () => this.ajustaPosicaoTooltip(tooltip, elRevisao));
+    window.addEventListener('resize', ajustaTooltipOnResize);
   }
 
-  private ajustaPosicaoTooltip(tooltip: HTMLElement, button: HTMLElement): void {
-    const rect = button.getBoundingClientRect();
+  private adicionarComentarioNaRevisao(elRevisao: HTMLElement): void {
+    const range = this.getRangeRevisao(elRevisao);
+    if (!range || this.quill?.comentarios?.rangePossuiComentario(range)) {
+      return;
+    }
+
+    this.quill.setSelection(range.index, range.length, Quill.sources.USER);
+    const editor = this.quill.root.closest('lexml-emenda-editor-texto-rico') || this.quill.root;
+    editor.dispatchEvent(
+      new CustomEvent('abrir-modal-comentario', {
+        bubbles: true,
+        composed: true,
+        detail: {
+          modo: this.modo || this.options?.modo || '',
+          range,
+          texto: this.quill.getText(range.index, range.length),
+        },
+      })
+    );
+  }
+
+  private revisaoPossuiComentario(elRevisao: HTMLElement): boolean {
+    const ranges = this.getRangesRevisao(elRevisao);
+    if (ranges.length) {
+      return ranges.some(range => this.quill?.comentarios?.rangePossuiComentario(range));
+    }
+
+    const range = this.getRangeElementoRevisao(elRevisao);
+    return !!range && this.quill?.comentarios?.rangePossuiComentario(range);
+  }
+
+  private getRangeRevisao(elRevisao: HTMLElement): { index: number; length: number } | null {
+    const ranges = this.getRangesRevisao(elRevisao);
+    if (ranges.length === 1) {
+      return ranges[0];
+    }
+
+    return this.getRangeElementoRevisao(elRevisao);
+  }
+
+  private getRangeElementoRevisao(elRevisao: HTMLElement): { index: number; length: number } | null {
+    const blot = Quill.find(elRevisao);
+    if (!blot) {
+      return null;
+    }
+
+    const index = this.quill.getIndex(blot);
+    const length = blot.length();
+    return length ? { index, length } : null;
+  }
+
+  private getRangesRevisao(elRevisao: HTMLElement): { index: number; length: number }[] {
+    const tipo = this.getTipoRevisao(elRevisao);
+    const idRevisao = this.getIdRevisao(elRevisao);
+    if (!tipo || !idRevisao) {
+      return [];
+    }
+
+    const ranges: { index: number; length: number }[] = [];
+    let index = 0;
+
+    this.quill.getContents().ops.forEach((op: any) => {
+      const length = this.getOpLength(op);
+      const idOp = this.getIdRevisaoFromValue(op.attributes?.[tipo]);
+      if (idOp === idRevisao) {
+        const rangeAnterior = ranges[ranges.length - 1];
+        if (rangeAnterior && rangeAnterior.index + rangeAnterior.length === index) {
+          rangeAnterior.length += length;
+        } else {
+          ranges.push({ index, length });
+        }
+      }
+
+      index += length;
+    });
+
+    return ranges;
+  }
+
+  private getTipoRevisao(elRevisao: HTMLElement): 'added' | 'removed' | null {
+    if (elRevisao.tagName === 'INS') {
+      return 'added';
+    }
+    if (elRevisao.tagName === 'DEL') {
+      return 'removed';
+    }
+    return null;
+  }
+
+  private getIdRevisao(elRevisao: HTMLElement): string {
+    const idRevisao = elRevisao.getAttribute('id-revisao');
+    if (idRevisao) {
+      return idRevisao;
+    }
+
+    const tipo = this.getTipoRevisao(elRevisao);
+    const blot = Quill.find(elRevisao);
+    return tipo && blot?.formats ? this.getIdRevisaoFromValue(blot.formats()?.[tipo]) : '';
+  }
+
+  private getIdRevisaoFromValue(value: string): string {
+    return value ? `${value}`.split('|')[2] || '' : '';
+  }
+
+  private getOpLength(op: any): number {
+    return typeof op.insert === 'string' ? op.insert.length : 1;
+  }
+
+  private getElementosMesmaRevisao(elRevisao: HTMLElement): HTMLElement[] {
+    const idRevisao = elRevisao.getAttribute('id-revisao');
+    if (!idRevisao) {
+      return [elRevisao];
+    }
+
+    return [...this.quill.root.querySelectorAll(`${elRevisao.tagName}[id-revisao="${idRevisao}"]`)] as HTMLElement[];
+  }
+
+  private ajustaPosicaoTooltip(tooltip: HTMLElement, button: HTMLElement, clientY?: number): void {
+    const rect = this.getRectReferenciaTooltip(button, clientY);
     const offset = 10;
 
     // Abrir para cima por padrão, a menos que não haja espaço suficiente
     let topOffset = rect.top - tooltip.clientHeight - offset;
-    if (topOffset < window.scrollY) {
+    if (topOffset < 0) {
       topOffset = rect.bottom + offset;
     }
     tooltip.style.top = `${topOffset + window.scrollY}px`;
@@ -445,6 +704,107 @@ class ModuloRevisao extends Module {
       leftOffset = offset;
     }
     tooltip.style.left = `${leftOffset + window.scrollX}px`;
+  }
+
+  private getRectReferenciaTooltip(elRevisao: HTMLElement, clientY?: number): RectReferencia {
+    const rectBase = this.getRectLinhaElemento(elRevisao, clientY);
+    const fragmentosContinuos = this.getFragmentosContinuosMesmaRevisao(elRevisao);
+    const rectsMesmaLinha = fragmentosContinuos
+      .map(fragmento => this.getRectLinhaElemento(fragmento.el, clientY, rectBase))
+      .filter((rect): rect is RectReferencia => !!rect && this.isMesmaLinha(rect, rectBase));
+
+    return rectsMesmaLinha.length ? this.unirRects(rectsMesmaLinha) : rectBase;
+  }
+
+  private getFragmentosContinuosMesmaRevisao(elRevisao: HTMLElement): { el: HTMLElement; index: number; length: number }[] {
+    const fragmentos = this.getElementosMesmaRevisao(elRevisao)
+      .map(el => {
+        const blot = Quill.find(el);
+        return blot ? { el, index: this.quill.getIndex(blot), length: blot.length() } : null;
+      })
+      .filter(Boolean)
+      .sort((a: any, b: any) => a.index - b.index) as { el: HTMLElement; index: number; length: number }[];
+
+    const indiceAtual = fragmentos.findIndex(fragmento => fragmento.el === elRevisao);
+    if (indiceAtual < 0) {
+      const blot = Quill.find(elRevisao);
+      return [{ el: elRevisao, index: blot ? this.quill.getIndex(blot) : 0, length: blot ? blot.length() : 0 }];
+    }
+
+    let inicio = indiceAtual;
+    while (inicio > 0 && fragmentos[inicio - 1].index + fragmentos[inicio - 1].length === fragmentos[inicio].index) {
+      inicio--;
+    }
+
+    let fim = indiceAtual;
+    while (fim < fragmentos.length - 1 && fragmentos[fim].index + fragmentos[fim].length === fragmentos[fim + 1].index) {
+      fim++;
+    }
+
+    return fragmentos.slice(inicio, fim + 1);
+  }
+
+  private getRectLinhaElemento(el: HTMLElement, clientY?: number, rectReferencia?: RectReferencia): RectReferencia {
+    const rects = Array.from(el.getClientRects())
+      .map(rect => this.toRectReferencia(rect))
+      .filter(rect => rect.width > 0 || rect.height > 0);
+
+    if (!rects.length) {
+      return this.toRectReferencia(el.getBoundingClientRect());
+    }
+
+    if (rectReferencia) {
+      const rectMesmaLinha = rects.find(rect => this.isMesmaLinha(rect, rectReferencia));
+      if (rectMesmaLinha) {
+        return rectMesmaLinha;
+      }
+    }
+
+    if (clientY !== undefined) {
+      return (
+        rects.find(rect => clientY >= rect.top && clientY <= rect.bottom) ||
+        rects.reduce((rectMaisProximo, rect) =>
+          Math.abs(this.getCentroVertical(rect) - clientY) < Math.abs(this.getCentroVertical(rectMaisProximo) - clientY) ? rect : rectMaisProximo
+        )
+      );
+    }
+
+    return rects[0];
+  }
+
+  private unirRects(rects: RectReferencia[]): RectReferencia {
+    const top = Math.min(...rects.map(rect => rect.top));
+    const right = Math.max(...rects.map(rect => rect.right));
+    const bottom = Math.max(...rects.map(rect => rect.bottom));
+    const left = Math.min(...rects.map(rect => rect.left));
+    return {
+      top,
+      right,
+      bottom,
+      left,
+      width: right - left,
+      height: bottom - top,
+    };
+  }
+
+  private isMesmaLinha(rect: RectReferencia, referencia: RectReferencia): boolean {
+    const centroVertical = this.getCentroVertical(rect);
+    return centroVertical >= referencia.top - 1 && centroVertical <= referencia.bottom + 1;
+  }
+
+  private getCentroVertical(rect: RectReferencia): number {
+    return rect.top + rect.height / 2;
+  }
+
+  private toRectReferencia(rect: DOMRect): RectReferencia {
+    return {
+      top: rect.top,
+      right: rect.right,
+      bottom: rect.bottom,
+      left: rect.left,
+      width: rect.width,
+      height: rect.height,
+    };
   }
 
   createTooltip() {
