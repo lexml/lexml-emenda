@@ -209,6 +209,7 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
   private rangeComentarioAtual?: any;
   private modoComentarioAtual = '';
   private acaoModalComentario: 'adicionar' | 'responder' | 'editar' = 'adicionar';
+  private comentarioEdicaoAtual?: { idSequenciaComentario: string; indexComentario: number };
 
   async getParlamentares(): Promise<Parlamentar[]> {
     try {
@@ -1595,15 +1596,16 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
             <span class="comentario-sequencia__trecho-texto">${trecho}</span>
           </span>
         </blockquote>
-        <div class="comentario-sequencia__comentarios">
-          ${seq.comentarios.map((comentario, index) => this.renderComentarioEstatico(comentario, index > 0, seq.comentarios.length > 1))}
-        </div>
+        <div class="comentario-sequencia__comentarios">${seq.comentarios.map((comentario, index) => this.renderComentarioEstatico(seq, comentario, index))}</div>
       </article>
     `;
   }
 
-  private renderComentarioEstatico(comentario: Comentario, resposta = false, exibirAcoes = false): TemplateResult {
-    const editavel = exibirAcoes && this.isComentarioDoUsuarioAtual(comentario);
+  private renderComentarioEstatico(seq: SequenciaComentario, comentario: Comentario, indexComentario: number): TemplateResult {
+    const resposta = indexComentario > 0;
+    const comentarioDoUsuarioAtual = this.isComentarioDoUsuarioAtual(comentario);
+    const editavel = comentarioDoUsuarioAtual;
+    const excluivel = comentarioDoUsuarioAtual && seq.comentarios.length > 1;
     const dataHoraFormatada = this.formatarDataHoraComentarioVisual(comentario.dataHora);
     return html`
       <section class="comentario-item ${resposta ? 'comentario-item--resposta' : ''}">
@@ -1615,14 +1617,24 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
         ${editavel
           ? html`
               <span class="comentario-item__acoes">
-                <button type="button" class="comentario-item__acao" title="Editar comentário" aria-label="Editar comentário" @click=${this.abrirModalEditarComentario}>
+                <button
+                  type="button"
+                  class="comentario-item__acao"
+                  title="Editar comentário"
+                  aria-label="Editar comentário"
+                  @click=${() => this.abrirModalEditarComentario(seq.id, indexComentario)}
+                >
                   <sl-icon name="pencil-square"></sl-icon>
                   Editar
                 </button>
-                <button type="button" class="comentario-item__acao comentario-item__acao--excluir" title="Excluir comentário" aria-label="Excluir comentário">
-                  <sl-icon name="trash"></sl-icon>
-                  Excluir
-                </button>
+                ${excluivel
+                  ? html`
+                      <button type="button" class="comentario-item__acao comentario-item__acao--excluir" title="Excluir comentário" aria-label="Excluir comentário">
+                        <sl-icon name="trash"></sl-icon>
+                        Excluir
+                      </button>
+                    `
+                  : ''}
               </span>
             `
           : ''}
@@ -1673,6 +1685,7 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
 
   private abrirModalAdicionarComentario = (event?: CustomEvent): void => {
     this.acaoModalComentario = 'adicionar';
+    this.comentarioEdicaoAtual = undefined;
     this.editorComentarioAtual = event?.target;
     this.rangeComentarioAtual = event?.detail?.range;
     this.modoComentarioAtual = event?.detail?.modo || '';
@@ -1681,19 +1694,26 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
 
   private abrirModalResponderComentario = (): void => {
     this.acaoModalComentario = 'responder';
+    this.comentarioEdicaoAtual = undefined;
     this.abrirModalComentario('Responder comentário');
   };
 
-  private abrirModalEditarComentario = (): void => {
+  private abrirModalEditarComentario = (idSequenciaComentario: string, indexComentario: number): void => {
+    const comentario = this.getComentarioPorSequenciaEIndice(idSequenciaComentario, indexComentario);
+    if (!comentario || !this.isComentarioDoUsuarioAtual(comentario)) {
+      return;
+    }
+
     this.acaoModalComentario = 'editar';
-    this.abrirModalComentario('Editar comentário');
+    this.comentarioEdicaoAtual = { idSequenciaComentario, indexComentario };
+    this.abrirModalComentario('Editar comentário', comentario.texto);
   };
 
-  private abrirModalComentario(titulo: string): void {
+  private abrirModalComentario(titulo: string, textoInicial = ''): void {
     this.tituloModalComentario = titulo;
     setTimeout(() => {
       if (this.comentarioTextarea) {
-        this.comentarioTextarea.value = '';
+        this.comentarioTextarea.value = textoInicial;
       }
       this.comentarioModal?.show();
       this.comentarioTextarea?.focus();
@@ -1707,6 +1727,8 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
   private confirmarComentarioEstatico = (): void => {
     if (this.acaoModalComentario === 'adicionar') {
       this.adicionarComentarioSelecionado();
+    } else if (this.acaoModalComentario === 'editar') {
+      this.editarComentarioSelecionado();
     }
     this.fecharModalComentario();
   };
@@ -1734,6 +1756,28 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
 
     this.sequenciasComentario = [...this.sequenciasComentario, sequenciaComentario];
     this._tabsDireita?.show('comentarios');
+  }
+
+  private editarComentarioSelecionado(): void {
+    const textoComentario = this.comentarioTextarea?.value?.trim();
+    if (!textoComentario || !this.comentarioEdicaoAtual) {
+      return;
+    }
+
+    const { idSequenciaComentario, indexComentario } = this.comentarioEdicaoAtual;
+    this.sequenciasComentario = this.sequenciasComentario.map(seq => {
+      if (seq.id !== idSequenciaComentario || !seq.comentarios[indexComentario]) {
+        return seq;
+      }
+
+      const comentarioAtualizado = Object.assign(new Comentario(), seq.comentarios[indexComentario], { texto: textoComentario });
+      const comentarios = seq.comentarios.map((comentario, index) => (index === indexComentario ? comentarioAtualizado : comentario));
+      return Object.assign(new SequenciaComentario(), seq, { comentarios });
+    });
+  }
+
+  private getComentarioPorSequenciaEIndice(idSequenciaComentario: string, indexComentario: number): Comentario | undefined {
+    return this.sequenciasComentario.find(seq => seq.id === idSequenciaComentario)?.comentarios[indexComentario];
   }
 
   private getLocalComentarioPorModo(modo: string): TipoLocalComentario {
