@@ -122,6 +122,18 @@ describe('Testando lexml-emenda-editor-texto-rico (EditorTextoRicoComponent)', (
     expect(editorTextoRico.texto).to.include('<comentario id-sequencia-comentario="sc123">Texto</comentario>');
   });
 
+  it('Deveria remover comentário do trecho marcado', () => {
+    editorTextoRico.setContent('<p>Texto para comentário.</p>');
+    editorTextoRico.quill?.setSelection(0, 5);
+    editorTextoRico.adicionarComentario('sc123');
+
+    const comentarioRemovido = editorTextoRico.removerComentario('sc123');
+
+    expect(comentarioRemovido).to.be.true;
+    expect(editorTextoRico.texto).to.not.include('<comentario');
+    expect(editorTextoRico.getTextoComentario('sc123')).to.equal('');
+  });
+
   it('Deveria desabilitar o botão de adicionar comentário quando a seleção já possuir comentário', async () => {
     editorTextoRico.setContent('<p>Texto para comentário.</p>');
     editorTextoRico.quill?.setSelection(0, 5);

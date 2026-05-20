@@ -551,6 +551,12 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
     return (this.quill as any)?.comentarios?.getTextoComentario(idSequenciaComentario) || '';
   }
 
+  public removerComentario(idSequenciaComentario: string): boolean {
+    const comentarioRemovido = (this.quill as any)?.comentarios?.remover(idSequenciaComentario);
+    this.atualizaEstadoBotaoComentario(this.quill?.getSelection());
+    return !!comentarioRemovido;
+  }
+
   private rangePossuiComentario(range: any): boolean {
     return !!(this.quill as any)?.comentarios?.rangePossuiComentario(range);
   }

@@ -58,6 +58,7 @@ import { errorInicializarEdicaoAction } from '../model/lexml/acao/errorInicializ
 import { isHtmlSemTexto } from '../util/string-util';
 import { ConfiguracaoPaginacao } from '../model/paginacao/paginacao';
 import { TipoMensagem } from '../model/lexml/util/mensagem';
+import { iconeComentario } from '../../assets/icons/icons';
 
 export interface DispositivoBloqueado {
   lexmlId: string;
@@ -167,6 +168,12 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
   private tituloModalComentario = 'Adicionar comentário';
 
   @state()
+  private textoTrechoComentarioAtual = '';
+
+  @state()
+  private tamanhoTextoModalComentario = 0;
+
+  @state()
   autoria = new Autoria();
 
   @query('lexml-emenda-substituicao-termo')
@@ -205,12 +212,16 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
   @query('#lexml-emenda-comentario-textarea')
   private comentarioTextarea!: HTMLTextAreaElement;
 
+  @query('#lexml-emenda-excluir-sequencia-comentario-modal')
+  private excluirSequenciaComentarioModal!: any;
+
   private editorComentarioAtual?: any;
   private rangeComentarioAtual?: any;
   private modoComentarioAtual = '';
   private acaoModalComentario: 'adicionar' | 'responder' | 'editar' = 'adicionar';
   private comentarioEdicaoAtual?: { idSequenciaComentario: string; indexComentario: number };
   private idSequenciaComentarioRespostaAtual?: string;
+  private idSequenciaComentarioExclusaoAtual?: string;
 
   async getParlamentares(): Promise<Parlamentar[]> {
     try {
@@ -1377,28 +1388,184 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
           color: #ef4444;
         }
 
-        .comentario-modal__campo {
-          display: flex;
-          flex-direction: column;
-          gap: 6px;
+        .comentario-dialog::part(panel) {
+          width: min(440px, calc(100vw - 32px));
+          border-radius: 8px;
+          box-shadow: 0 12px 32px rgba(15, 23, 42, 0.24);
         }
 
-        .comentario-modal__campo label {
+        .comentario-dialog--confirmacao::part(panel) {
+          width: min(440px, calc(100vw - 32px));
+        }
+
+        .comentario-dialog::part(header) {
+          padding: 5px 24px 10px;
+          align-items: center;
+          border-bottom: 1px solid var(--sl-color-neutral-200);
+        }
+
+        .comentario-dialog::part(title) {
+          color: #111827;
+          font-family: var(--eta-font-sans);
+          font-size: 1.15rem;
           font-weight: 600;
+          letter-spacing: 0;
+          line-height: 1.3;
+          padding-left: 0;
+          padding-bottom: 10px;
+        }
+
+        .comentario-dialog::part(close-button) {
+          align-items: center;
+          border: 0;
+          color: #111827;
+          display: inline-flex;
+          font-size: 1.3rem;
+          font-weight: 700;
+          height: 32px;
+          justify-content: center;
+          margin-top: 0;
+          margin-right: 0;
+          margin-top: 10px;
+          padding: 4px;
+          width: 32px;
+        }
+
+        .comentario-dialog::part(body) {
+          color: #374151;
+          font-family: var(--eta-font-sans);
+          padding: 12px 24px 20px;
+        }
+
+        .comentario-dialog::part(footer) {
+          border-top: 1px solid var(--sl-color-neutral-200);
+          padding: 16px 24px 20px;
+        }
+
+        .comentario-modal__campo,
+        .comentario-modal__grupo {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+
+        .comentario-modal__grupo {
+          margin-bottom: 16px;
+        }
+
+        .comentario-modal__label {
+          color: #374151;
+          font-size: 0.87rem;
+          font-weight: 500;
+          line-height: 1.3;
+        }
+
+        .comentario-modal__trecho {
+          border-left: 3px solid #60a5fa;
+          border-radius: 7px;
+          background: #f3f2ed;
+          color: #374151;
+          font-family: var(--eta-font-serif);
+          font-size: 0.88rem;
+          font-style: italic;
+          line-height: 1.45;
+          overflow: hidden;
+          padding: 10px 12px;
+          text-overflow: ellipsis;
+          white-space: nowrap;
         }
 
         .comentario-modal__textarea {
-          min-height: 96px;
+          min-height: 100px;
           resize: vertical;
           border: 1px solid var(--sl-color-neutral-300);
           border-radius: 4px;
+          color: #374151;
           font: inherit;
+          line-height: 1.45;
           padding: 8px;
+        }
+
+        .comentario-modal__textarea::placeholder {
+          color: #8a94a3;
         }
 
         .comentario-modal__textarea:focus {
           outline: 2px solid var(--sl-color-primary-200);
           border-color: var(--sl-color-primary-500);
+        }
+
+        .comentario-modal__contador {
+          color: #6b7280;
+          font-size: 0.74rem;
+          line-height: 1;
+          text-align: right;
+        }
+
+        .comentario-dialog__footer {
+          display: flex;
+          justify-content: flex-end;
+          gap: 10px;
+        }
+
+        .comentario-dialog__footer sl-button::part(base) {
+          min-width: 94px;
+        }
+
+        .comentario-modal__botao-icone {
+          display: inline-flex;
+          align-items: center;
+          color: currentColor;
+        }
+
+        .comentario-modal__botao-icone svg {
+          width: 14px;
+          height: 14px;
+          fill: currentColor;
+        }
+
+        .comentario-modal__botao-icone .ql-fill {
+          fill: currentColor;
+        }
+
+        .comentario-confirmacao {
+          display: flex;
+          gap: 14px;
+          align-items: flex-start;
+        }
+
+        .comentario-confirmacao__icone {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          flex: none;
+          width: 40px;
+          height: 40px;
+          border-radius: 50%;
+          background: #fef2f2;
+          color: #dc2626;
+          font-size: 1.05rem;
+        }
+
+        .comentario-confirmacao__conteudo {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+          min-width: 0;
+        }
+
+        .comentario-confirmacao__titulo {
+          color: #111827;
+          font-size: 0.95rem;
+          font-weight: 600;
+          line-height: 1.35;
+        }
+
+        .comentario-confirmacao__texto {
+          color: #4b5563;
+          font-size: 0.91rem;
+          line-height: 1.45;
+          margin: 0;
         }
 
         @media (max-width: 768px) {
@@ -1528,7 +1695,7 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
           </sl-tab-group>
         </div>
       </sl-split-panel>
-      ${this.renderModalComentario()}
+      ${this.renderModalComentario()} ${this.renderModalExcluirSequenciaComentario()}
     `;
   }
 
@@ -1587,6 +1754,7 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
               class="comentario-sequencia__acao comentario-sequencia__acao--excluir"
               title="Excluir sequência de comentários"
               aria-label="Excluir sequência de comentários"
+              @click=${() => this.abrirModalExcluirSequenciaComentario(seq.id)}
             >
               <sl-icon name="trash"></sl-icon>
             </button>
@@ -1673,13 +1841,56 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
 
   private renderModalComentario(): TemplateResult {
     return html`
-      <sl-dialog id="lexml-emenda-comentario-modal" label=${this.tituloModalComentario}>
+      <sl-dialog id="lexml-emenda-comentario-modal" class="comentario-dialog" label=${this.tituloModalComentario}>
+        ${this.acaoModalComentario === 'adicionar' && this.textoTrechoComentarioAtual
+          ? html`
+              <div class="comentario-modal__grupo">
+                <span class="comentario-modal__label">Trecho selecionado</span>
+                <div class="comentario-modal__trecho">"${this.textoTrechoComentarioAtual}"</div>
+              </div>
+            `
+          : ''}
         <div class="comentario-modal__campo">
-          <label for="lexml-emenda-comentario-textarea">Comentário</label>
-          <textarea id="lexml-emenda-comentario-textarea" class="comentario-modal__textarea"></textarea>
+          <label class="comentario-modal__label" for="lexml-emenda-comentario-textarea">Comentário</label>
+          <textarea
+            id="lexml-emenda-comentario-textarea"
+            class="comentario-modal__textarea"
+            maxlength="500"
+            placeholder=${this.getPlaceholderModalComentario()}
+            @input=${this.atualizarContadorComentario}
+          ></textarea>
+          <span class="comentario-modal__contador">${this.tamanhoTextoModalComentario} / 500 caracteres</span>
         </div>
-        <sl-button slot="footer" variant="default" @click=${this.fecharModalComentario}>Cancelar</sl-button>
-        <sl-button slot="footer" variant="primary" @click=${this.confirmarComentarioEstatico}>Comentar</sl-button>
+        <div slot="footer" class="comentario-dialog__footer">
+          <sl-button variant="default" @click=${this.fecharModalComentario}>Cancelar</sl-button>
+          <sl-button variant="primary" @click=${this.confirmarComentarioEstatico}>
+            <span slot="prefix" class="comentario-modal__botao-icone">${unsafeHTML(iconeComentario)}</span>
+            Comentar
+          </sl-button>
+        </div>
+      </sl-dialog>
+    `;
+  }
+
+  private renderModalExcluirSequenciaComentario(): TemplateResult {
+    return html`
+      <sl-dialog id="lexml-emenda-excluir-sequencia-comentario-modal" class="comentario-dialog comentario-dialog--confirmacao" label="Confirmar exclusão">
+        <div class="comentario-confirmacao">
+          <span class="comentario-confirmacao__icone" aria-hidden="true">
+            <sl-icon name="trash"></sl-icon>
+          </span>
+          <div class="comentario-confirmacao__conteudo">
+            <span class="comentario-confirmacao__titulo">Excluir esta sequência de comentários?</span>
+            <p class="comentario-confirmacao__texto">Esta ação removerá todos os comentários e respostas associados ao trecho. Essa operação não poderá ser desfeita.</p>
+          </div>
+        </div>
+        <div slot="footer" class="comentario-dialog__footer">
+          <sl-button variant="default" @click=${this.fecharModalExcluirSequenciaComentario}>Cancelar</sl-button>
+          <sl-button variant="danger" @click=${this.confirmarExcluirSequenciaComentario}>
+            <sl-icon slot="prefix" name="trash"></sl-icon>
+            Excluir
+          </sl-button>
+        </div>
       </sl-dialog>
     `;
   }
@@ -1688,6 +1899,7 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
     this.acaoModalComentario = 'adicionar';
     this.comentarioEdicaoAtual = undefined;
     this.idSequenciaComentarioRespostaAtual = undefined;
+    this.textoTrechoComentarioAtual = event?.detail?.texto || '';
     this.editorComentarioAtual = event?.target;
     this.rangeComentarioAtual = event?.detail?.range;
     this.modoComentarioAtual = event?.detail?.modo || '';
@@ -1702,6 +1914,7 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
     this.acaoModalComentario = 'responder';
     this.comentarioEdicaoAtual = undefined;
     this.idSequenciaComentarioRespostaAtual = idSequenciaComentario;
+    this.textoTrechoComentarioAtual = '';
     this.abrirModalComentario('Responder comentário');
   };
 
@@ -1714,22 +1927,61 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
     this.acaoModalComentario = 'editar';
     this.comentarioEdicaoAtual = { idSequenciaComentario, indexComentario };
     this.idSequenciaComentarioRespostaAtual = undefined;
+    this.textoTrechoComentarioAtual = '';
     this.abrirModalComentario('Editar comentário', comentario.texto);
   };
 
   private abrirModalComentario(titulo: string, textoInicial = ''): void {
     this.tituloModalComentario = titulo;
+    this.tamanhoTextoModalComentario = textoInicial.length;
     setTimeout(() => {
       if (this.comentarioTextarea) {
         this.comentarioTextarea.value = textoInicial;
+        this.tamanhoTextoModalComentario = this.comentarioTextarea.value.length;
       }
       this.comentarioModal?.show();
       this.comentarioTextarea?.focus();
     }, 0);
   }
 
+  private getPlaceholderModalComentario(): string {
+    if (this.acaoModalComentario === 'responder') {
+      return 'Escreva sua resposta para esta sequência...';
+    }
+    if (this.acaoModalComentario === 'editar') {
+      return 'Atualize o texto do comentário...';
+    }
+    return 'Escreva seu comentário sobre o trecho selecionado...';
+  }
+
+  private atualizarContadorComentario = (): void => {
+    this.tamanhoTextoModalComentario = this.comentarioTextarea?.value?.length || 0;
+  };
+
   private fecharModalComentario = (): void => {
     this.comentarioModal?.hide();
+  };
+
+  private abrirModalExcluirSequenciaComentario = (idSequenciaComentario: string): void => {
+    if (!this.sequenciasComentario.some(seq => seq.id === idSequenciaComentario)) {
+      return;
+    }
+
+    this.idSequenciaComentarioExclusaoAtual = idSequenciaComentario;
+    this.excluirSequenciaComentarioModal?.show();
+  };
+
+  private fecharModalExcluirSequenciaComentario = (): void => {
+    this.idSequenciaComentarioExclusaoAtual = undefined;
+    this.excluirSequenciaComentarioModal?.hide();
+  };
+
+  private confirmarExcluirSequenciaComentario = (): void => {
+    if (this.idSequenciaComentarioExclusaoAtual) {
+      this.excluirSequenciaComentario(this.idSequenciaComentarioExclusaoAtual);
+    }
+
+    this.fecharModalExcluirSequenciaComentario();
   };
 
   private confirmarComentarioEstatico = (): void => {
@@ -1786,6 +2038,23 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
 
       return Object.assign(new SequenciaComentario(), seq, { comentarios: [...seq.comentarios, resposta] });
     });
+  }
+
+  private excluirSequenciaComentario(idSequenciaComentario: string): void {
+    const sequenciaComentario = this.sequenciasComentario.find(seq => seq.id === idSequenciaComentario);
+    if (!sequenciaComentario) {
+      return;
+    }
+
+    this.getEditorTextoRicoByLocalComentario(sequenciaComentario.local)?.removerComentario?.(idSequenciaComentario);
+    this.sequenciasComentario = this.sequenciasComentario.filter(seq => seq.id !== idSequenciaComentario);
+
+    if (this.idSequenciaComentarioRespostaAtual === idSequenciaComentario) {
+      this.idSequenciaComentarioRespostaAtual = undefined;
+    }
+    if (this.comentarioEdicaoAtual?.idSequenciaComentario === idSequenciaComentario) {
+      this.comentarioEdicaoAtual = undefined;
+    }
   }
 
   private editarComentarioSelecionado(): void {

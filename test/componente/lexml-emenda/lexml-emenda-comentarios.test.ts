@@ -147,4 +147,64 @@ describe('LexmlEmendaComponent - comentários', () => {
 
     expect(component.sequenciasComentario[0].comentarios).to.have.length(1);
   });
+
+  it('Deveria abrir modal de confirmação para excluir sequência de comentários', () => {
+    const component = new LexmlEmendaComponent() as any;
+    component.sequenciasComentario = [criarSequenciaComentario(criarComentario('Texto original'))];
+
+    let modalAberto = false;
+    Object.defineProperty(component, 'excluirSequenciaComentarioModal', {
+      value: {
+        show: (): void => {
+          modalAberto = true;
+        },
+      },
+      configurable: true,
+    });
+
+    component.abrirModalExcluirSequenciaComentario('sc1');
+
+    expect(component.idSequenciaComentarioExclusaoAtual).to.equal('sc1');
+    expect(modalAberto).to.be.true;
+  });
+
+  it('Deveria excluir sequência confirmada e remover marcação do editor', () => {
+    const component = new LexmlEmendaComponent() as any;
+    component.sequenciasComentario = [
+      criarSequenciaComentarioComId('sc1', criarComentario('Texto original')),
+      criarSequenciaComentarioComId('sc2', criarComentario('Outro comentário')),
+    ];
+    component.idSequenciaComentarioExclusaoAtual = 'sc1';
+    component.idSequenciaComentarioRespostaAtual = 'sc1';
+    component.comentarioEdicaoAtual = { idSequenciaComentario: 'sc1', indexComentario: 0 };
+
+    let idComentarioRemovido = '';
+    let modalFechado = false;
+    Object.defineProperty(component, '_lexmlJustificativa', {
+      value: {
+        removerComentario: (idSequenciaComentario: string): boolean => {
+          idComentarioRemovido = idSequenciaComentario;
+          return true;
+        },
+      },
+      configurable: true,
+    });
+    Object.defineProperty(component, 'excluirSequenciaComentarioModal', {
+      value: {
+        hide: (): void => {
+          modalFechado = true;
+        },
+      },
+      configurable: true,
+    });
+
+    component.confirmarExcluirSequenciaComentario();
+
+    expect(component.sequenciasComentario.map((seq: SequenciaComentario) => seq.id)).to.deep.equal(['sc2']);
+    expect(idComentarioRemovido).to.equal('sc1');
+    expect(component.idSequenciaComentarioExclusaoAtual).to.be.undefined;
+    expect(component.idSequenciaComentarioRespostaAtual).to.be.undefined;
+    expect(component.comentarioEdicaoAtual).to.be.undefined;
+    expect(modalFechado).to.be.true;
+  });
 });

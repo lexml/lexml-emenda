@@ -53,6 +53,16 @@ class ModuloComentario extends Module {
     return true;
   }
 
+  remover(idSequenciaComentario: string): boolean {
+    if (!idSequenciaComentario) {
+      return false;
+    }
+
+    const ranges = this.getRangesComentario(idSequenciaComentario);
+    ranges.forEach(range => this.quill.formatText(range.index, range.length, COMENTARIO_FORMAT, false, Quill.sources.USER));
+    return ranges.length > 0;
+  }
+
   rangePossuiComentario(range: any): boolean {
     if (!range?.length) {
       return false;
@@ -67,6 +77,31 @@ class ModuloComentario extends Module {
 
   findNodesById(idSequenciaComentario: string): HTMLElement[] {
     return [...this.quill.root.querySelectorAll(`${COMENTARIO_TAG}[${COMENTARIO_ID_ATTRIBUTE}="${idSequenciaComentario}"]`)] as HTMLElement[];
+  }
+
+  private getRangesComentario(idSequenciaComentario: string): { index: number; length: number }[] {
+    const ranges: { index: number; length: number }[] = [];
+    let index = 0;
+
+    this.quill.getContents().ops.forEach((op: any) => {
+      const length = this.getOpLength(op);
+      if (op.attributes?.[COMENTARIO_FORMAT] === idSequenciaComentario) {
+        const rangeAnterior = ranges[ranges.length - 1];
+        if (rangeAnterior && rangeAnterior.index + rangeAnterior.length === index) {
+          rangeAnterior.length += length;
+        } else {
+          ranges.push({ index, length });
+        }
+      }
+
+      index += length;
+    });
+
+    return ranges;
+  }
+
+  private getOpLength(op: any): number {
+    return typeof op.insert === 'string' ? op.insert.length : 1;
   }
 
   getTextoComentario(idSequenciaComentario: string): string {
