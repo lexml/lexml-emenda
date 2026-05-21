@@ -218,11 +218,15 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
   @query('#lexml-emenda-excluir-sequencia-comentario-modal')
   private excluirSequenciaComentarioModal!: any;
 
+  @query('#lexml-emenda-excluir-comentario-modal')
+  private excluirComentarioModal!: any;
+
   private editorComentarioAtual?: any;
   private rangeComentarioAtual?: any;
   private modoComentarioAtual = '';
   private acaoModalComentario: 'adicionar' | 'responder' | 'editar' = 'adicionar';
   private comentarioEdicaoAtual?: { idSequenciaComentario: string; indexComentario: number };
+  private comentarioExclusaoAtual?: { idSequenciaComentario: string; indexComentario: number };
   private idSequenciaComentarioRespostaAtual?: string;
   private idSequenciaComentarioExclusaoAtual?: string;
 
@@ -1720,7 +1724,7 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
           </sl-tab-group>
         </div>
       </sl-split-panel>
-      ${this.renderModalComentario()} ${this.renderModalExcluirSequenciaComentario()}
+      ${this.renderModalComentario()} ${this.renderModalExcluirSequenciaComentario()} ${this.renderModalExcluirComentario()}
     `;
   }
 
@@ -1823,7 +1827,13 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
                 </button>
                 ${excluivel
                   ? html`
-                      <button type="button" class="comentario-item__acao comentario-item__acao--excluir" title="Excluir comentário" aria-label="Excluir comentário">
+                      <button
+                        type="button"
+                        class="comentario-item__acao comentario-item__acao--excluir"
+                        title="Excluir comentário"
+                        aria-label="Excluir comentário"
+                        @click=${() => this.abrirModalExcluirComentario(seq.id, indexComentario)}
+                      >
                         <sl-icon name="trash"></sl-icon>
                         Excluir
                       </button>
@@ -1916,6 +1926,29 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
         <div slot="footer" class="comentario-dialog__footer">
           <sl-button variant="default" @click=${this.fecharModalExcluirSequenciaComentario}>Cancelar</sl-button>
           <sl-button variant="danger" @click=${this.confirmarExcluirSequenciaComentario}>
+            <sl-icon slot="prefix" name="trash"></sl-icon>
+            Excluir
+          </sl-button>
+        </div>
+      </sl-dialog>
+    `;
+  }
+
+  private renderModalExcluirComentario(): TemplateResult {
+    return html`
+      <sl-dialog id="lexml-emenda-excluir-comentario-modal" class="comentario-dialog comentario-dialog--confirmacao" label="Confirmar exclusão">
+        <div class="comentario-confirmacao">
+          <span class="comentario-confirmacao__icone" aria-hidden="true">
+            <sl-icon name="trash"></sl-icon>
+          </span>
+          <div class="comentario-confirmacao__conteudo">
+            <span class="comentario-confirmacao__titulo">Excluir este comentário?</span>
+            <p class="comentario-confirmacao__texto">Esta ação removerá apenas este comentário da sequência. O trecho comentado e as demais respostas serão mantidos.</p>
+          </div>
+        </div>
+        <div slot="footer" class="comentario-dialog__footer">
+          <sl-button variant="default" @click=${this.fecharModalExcluirComentario}>Cancelar</sl-button>
+          <sl-button variant="danger" @click=${this.confirmarExcluirComentario}>
             <sl-icon slot="prefix" name="trash"></sl-icon>
             Excluir
           </sl-button>
@@ -2019,6 +2052,29 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
     this.fecharModalExcluirSequenciaComentario();
   };
 
+  private abrirModalExcluirComentario = (idSequenciaComentario: string, indexComentario: number): void => {
+    if (!this.podeExcluirComentario(idSequenciaComentario, indexComentario)) {
+      return;
+    }
+
+    this.comentarioExclusaoAtual = { idSequenciaComentario, indexComentario };
+    this.excluirComentarioModal?.show();
+  };
+
+  private fecharModalExcluirComentario = (): void => {
+    this.comentarioExclusaoAtual = undefined;
+    this.excluirComentarioModal?.hide();
+  };
+
+  private confirmarExcluirComentario = (): void => {
+    if (this.comentarioExclusaoAtual) {
+      const { idSequenciaComentario, indexComentario } = this.comentarioExclusaoAtual;
+      this.excluirComentario(idSequenciaComentario, indexComentario);
+    }
+
+    this.fecharModalExcluirComentario();
+  };
+
   private confirmarComentarioEstatico = (): void => {
     if (this.acaoModalComentario === 'adicionar') {
       this.adicionarComentarioSelecionado();
@@ -2075,6 +2131,35 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
     });
   }
 
+  private excluirComentario(idSequenciaComentario: string, indexComentario: number): void {
+    if (!this.podeExcluirComentario(idSequenciaComentario, indexComentario)) {
+      return;
+    }
+
+    this.sequenciasComentario = this.sequenciasComentario.map(seq => {
+      if (seq.id !== idSequenciaComentario) {
+        return seq;
+      }
+
+      const comentarios = seq.comentarios.filter((_, index) => index !== indexComentario);
+      return Object.assign(new SequenciaComentario(), seq, { comentarios });
+    });
+
+    if (this.comentarioEdicaoAtual?.idSequenciaComentario === idSequenciaComentario) {
+      this.comentarioEdicaoAtual = undefined;
+    }
+  }
+
+  private podeExcluirComentario(idSequenciaComentario: string, indexComentario: number): boolean {
+    const sequenciaComentario = this.sequenciasComentario.find(seq => seq.id === idSequenciaComentario);
+    if (!sequenciaComentario || sequenciaComentario.comentarios.length <= 1) {
+      return false;
+    }
+
+    const comentario = sequenciaComentario.comentarios[indexComentario];
+    return !!comentario && this.isComentarioDoUsuarioAtual(comentario);
+  }
+
   private excluirSequenciaComentario(idSequenciaComentario: string): void {
     const sequenciaComentario = this.sequenciasComentario.find(seq => seq.id === idSequenciaComentario);
     if (!sequenciaComentario) {
@@ -2116,6 +2201,9 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
     }
     if (this.comentarioEdicaoAtual?.idSequenciaComentario === idSequenciaComentario) {
       this.comentarioEdicaoAtual = undefined;
+    }
+    if (this.comentarioExclusaoAtual?.idSequenciaComentario === idSequenciaComentario) {
+      this.comentarioExclusaoAtual = undefined;
     }
     if (this.idSequenciaComentarioExclusaoAtual === idSequenciaComentario) {
       this.idSequenciaComentarioExclusaoAtual = undefined;

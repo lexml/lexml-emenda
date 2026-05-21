@@ -165,6 +165,75 @@ describe('LexmlEmendaComponent - comentários', () => {
     expect(component.sequenciasComentario[0].comentarios).to.have.length(1);
   });
 
+  it('Deveria abrir modal de confirmação para excluir comentário do usuário', () => {
+    const component = new LexmlEmendaComponent() as any;
+    component.sequenciasComentario = [criarSequenciaComentario(criarComentario('Texto original'), criarComentario('Resposta original'))];
+
+    let modalAberto = false;
+    Object.defineProperty(component, 'excluirComentarioModal', {
+      value: {
+        show: (): void => {
+          modalAberto = true;
+        },
+      },
+      configurable: true,
+    });
+
+    component.abrirModalExcluirComentario('sc1', 1);
+
+    expect(component.comentarioExclusaoAtual).to.deep.equal({ idSequenciaComentario: 'sc1', indexComentario: 1 });
+    expect(modalAberto).to.be.true;
+  });
+
+  it('Não deveria abrir modal para excluir comentário de outro usuário ou sequência com único comentário', () => {
+    const component = new LexmlEmendaComponent() as any;
+    component.sequenciasComentario = [
+      criarSequenciaComentarioComId('sc1', criarComentario('Texto original')),
+      criarSequenciaComentarioComId('sc2', criarComentario('Comentário próprio'), criarComentario('Comentário de outro usuário', criarUsuario('u2', 'Beltrano'))),
+    ];
+
+    let modalAberto = false;
+    Object.defineProperty(component, 'excluirComentarioModal', {
+      value: {
+        show: (): void => {
+          modalAberto = true;
+        },
+      },
+      configurable: true,
+    });
+
+    component.abrirModalExcluirComentario('sc1', 0);
+    component.abrirModalExcluirComentario('sc2', 1);
+
+    expect(component.comentarioExclusaoAtual).to.be.undefined;
+    expect(modalAberto).to.be.false;
+  });
+
+  it('Deveria excluir apenas o comentário confirmado mantendo a sequência', () => {
+    const component = new LexmlEmendaComponent() as any;
+    component.sequenciasComentario = [criarSequenciaComentario(criarComentario('Texto original'), criarComentario('Resposta removida'), criarComentario('Resposta mantida'))];
+    component.comentarioExclusaoAtual = { idSequenciaComentario: 'sc1', indexComentario: 1 };
+    component.comentarioEdicaoAtual = { idSequenciaComentario: 'sc1', indexComentario: 1 };
+
+    let modalFechado = false;
+    Object.defineProperty(component, 'excluirComentarioModal', {
+      value: {
+        hide: (): void => {
+          modalFechado = true;
+        },
+      },
+      configurable: true,
+    });
+
+    component.confirmarExcluirComentario();
+
+    expect(component.sequenciasComentario).to.have.length(1);
+    expect(component.sequenciasComentario[0].comentarios.map((comentario: Comentario) => comentario.texto)).to.deep.equal(['Texto original', 'Resposta mantida']);
+    expect(component.comentarioExclusaoAtual).to.be.undefined;
+    expect(component.comentarioEdicaoAtual).to.be.undefined;
+    expect(modalFechado).to.be.true;
+  });
+
   it('Deveria abrir modal de confirmação para excluir sequência de comentários', () => {
     const component = new LexmlEmendaComponent() as any;
     component.sequenciasComentario = [criarSequenciaComentario(criarComentario('Texto original'))];
