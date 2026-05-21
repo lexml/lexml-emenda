@@ -134,6 +134,56 @@ describe('Testando lexml-emenda-editor-texto-rico (EditorTextoRicoComponent)', (
     expect(editorTextoRico.getTextoComentario('sc123')).to.equal('');
   });
 
+  it('Deveria indicar que comentário não existe quando o trecho marcado for apagado', () => {
+    editorTextoRico.setContent('<p>Texto para comentário.</p>');
+    editorTextoRico.quill?.setSelection(0, 5);
+    editorTextoRico.adicionarComentario('sc123');
+
+    expect(editorTextoRico.possuiComentario('sc123')).to.be.true;
+
+    editorTextoRico.quill?.deleteText(0, 5, 'user');
+
+    expect(editorTextoRico.possuiComentario('sc123')).to.be.false;
+  });
+
+  it('Deveria preservar espaços do trecho comentado', () => {
+    editorTextoRico.setContent('<p>AB</p>');
+    editorTextoRico.quill?.insertText(1, '   ', 'api');
+    editorTextoRico.quill?.setSelection(1, 3);
+
+    editorTextoRico.adicionarComentario('sc123');
+
+    expect(editorTextoRico.getTextoComentario('sc123')).to.equal('   ');
+  });
+
+  it('Deveria preservar marcação de comentário ao carregar conteúdo no editor', () => {
+    editorTextoRico.setContent('<p><comentario id-sequencia-comentario="sc123">Texto comentado</comentario></p>');
+
+    expect(editorTextoRico.possuiComentario('sc123')).to.be.true;
+    expect(editorTextoRico.getTextoComentario('sc123')).to.equal('Texto comentado');
+  });
+
+  it('Não deveria colar marcação de comentário copiada do editor', async () => {
+    editorTextoRico.setContent('<p>Início fim.</p>');
+    editorTextoRico.quill?.setSelection(7, 0);
+
+    const clipboardData = new DataTransfer();
+    clipboardData.setData('text/html', '<p><comentario id-sequencia-comentario="sc123">texto comentado</comentario></p>');
+    clipboardData.setData('text/plain', 'texto comentado');
+    const pasteEvent = new ClipboardEvent('paste', {
+      bubbles: true,
+      cancelable: true,
+      clipboardData,
+    });
+
+    editorTextoRico.quill?.root.dispatchEvent(pasteEvent);
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    expect(editorTextoRico.texto).to.include('texto comentado');
+    expect(editorTextoRico.texto).to.not.include('<comentario');
+    expect(editorTextoRico.possuiComentario('sc123')).to.be.false;
+  });
+
   it('Deveria desabilitar o botão de adicionar comentário quando a seleção já possuir comentário', async () => {
     editorTextoRico.setContent('<p>Texto para comentário.</p>');
     editorTextoRico.quill?.setSelection(0, 5);

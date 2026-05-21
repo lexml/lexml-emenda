@@ -557,6 +557,11 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
     return !!comentarioRemovido;
   }
 
+  public possuiComentario(idSequenciaComentario: string): boolean | undefined {
+    const moduloComentario = (this.quill as any)?.comentarios;
+    return moduloComentario ? moduloComentario.existe(idSequenciaComentario) : undefined;
+  }
+
   private rangePossuiComentario(range: any): boolean {
     return !!(this.quill as any)?.comentarios?.rangePossuiComentario(range);
   }

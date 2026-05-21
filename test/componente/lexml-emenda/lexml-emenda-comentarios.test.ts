@@ -99,6 +99,23 @@ describe('LexmlEmendaComponent - comentários', () => {
     expect(component.sequenciasComentario[0].comentarios[0].texto).to.equal('Texto original');
   });
 
+  it('Deveria habilitar o botão de comentar apenas quando houver texto válido no modal', () => {
+    const component = new LexmlEmendaComponent() as any;
+    const textarea = { value: '   ' };
+    Object.defineProperty(component, 'comentarioTextarea', { value: textarea, configurable: true });
+
+    component.atualizarContadorComentario();
+
+    expect(component.tamanhoTextoModalComentario).to.equal(3);
+    expect(component.comentarioModalPossuiTexto).to.be.false;
+
+    textarea.value = ' Comentário ';
+    component.atualizarContadorComentario();
+
+    expect(component.tamanhoTextoModalComentario).to.equal(12);
+    expect(component.comentarioModalPossuiTexto).to.be.true;
+  });
+
   it('Deveria abrir modal de resposta para a sequência selecionada', () => {
     const component = new LexmlEmendaComponent() as any;
     component.sequenciasComentario = [criarSequenciaComentario(criarComentario('Texto original'))];
@@ -206,5 +223,57 @@ describe('LexmlEmendaComponent - comentários', () => {
     expect(component.idSequenciaComentarioRespostaAtual).to.be.undefined;
     expect(component.comentarioEdicaoAtual).to.be.undefined;
     expect(modalFechado).to.be.true;
+  });
+
+  it('Deveria excluir sequência de comentários quando a marcação não existir mais no texto', () => {
+    const component = new LexmlEmendaComponent() as any;
+    component.sequenciasComentario = [
+      criarSequenciaComentarioComId('sc1', criarComentario('Texto apagado')),
+      criarSequenciaComentarioComId('sc2', criarComentario('Texto mantido')),
+    ];
+    component.idSequenciaComentarioRespostaAtual = 'sc1';
+    component.comentarioEdicaoAtual = { idSequenciaComentario: 'sc1', indexComentario: 0 };
+    component.idSequenciaComentarioExclusaoAtual = 'sc1';
+    Object.defineProperty(component, '_lexmlJustificativa', {
+      value: {
+        possuiComentario: (idSequenciaComentario: string): boolean => idSequenciaComentario === 'sc2',
+      },
+      configurable: true,
+    });
+
+    component.sincronizarSequenciasComentarioComTexto();
+
+    expect(component.sequenciasComentario.map((seq: SequenciaComentario) => seq.id)).to.deep.equal(['sc2']);
+    expect(component.idSequenciaComentarioRespostaAtual).to.be.undefined;
+    expect(component.comentarioEdicaoAtual).to.be.undefined;
+    expect(component.idSequenciaComentarioExclusaoAtual).to.be.undefined;
+  });
+
+  it('Não deveria excluir sequência quando o editor ainda não informar a existência da marcação', () => {
+    const component = new LexmlEmendaComponent() as any;
+    component.sequenciasComentario = [criarSequenciaComentarioComId('sc1', criarComentario('Texto original'))];
+    Object.defineProperty(component, '_lexmlJustificativa', {
+      value: {
+        possuiComentario: (): undefined => undefined,
+      },
+      configurable: true,
+    });
+
+    component.sincronizarSequenciasComentarioComTexto();
+
+    expect(component.sequenciasComentario.map((seq: SequenciaComentario) => seq.id)).to.deep.equal(['sc1']);
+  });
+
+  it('Deveria preservar espaços como trecho comentado localizado', () => {
+    const component = new LexmlEmendaComponent() as any;
+    const sequencia = criarSequenciaComentarioComId('sc1', criarComentario('Comentário'));
+    Object.defineProperty(component, '_lexmlJustificativa', {
+      value: {
+        getTextoComentario: (): string => '   ',
+      },
+      configurable: true,
+    });
+
+    expect(component.getTrechoComentario(sequencia)).to.equal('   ');
   });
 });

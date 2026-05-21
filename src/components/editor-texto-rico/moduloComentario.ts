@@ -1,5 +1,6 @@
 const Module = Quill.import('core/module');
 const Inline = Quill.import('blots/inline');
+const Delta = Quill.import('delta');
 
 const COMENTARIO_FORMAT = 'comentario';
 const COMENTARIO_TAG = 'comentario';
@@ -41,6 +42,55 @@ class ModuloComentario extends Module {
     super(quill, options);
     this.quill = quill;
     this.quill.comentarios = this;
+    this.quill.root.addEventListener('paste', this.onPaste, true);
+  }
+
+  private onPaste = (event: ClipboardEvent): void => {
+    if (event.defaultPrevented || !this.quill.isEnabled()) {
+      return;
+    }
+
+    const html = event.clipboardData?.getData('text/html') || '';
+    if (!this.htmlPossuiComentario(html)) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopImmediatePropagation();
+
+    const range = this.quill.getSelection(true);
+    if (!range) {
+      return;
+    }
+
+    const htmlSemComentarios = this.removerComentariosDoHtml(html);
+    const texto = event.clipboardData?.getData('text/plain') || '';
+    const conteudoColado = htmlSemComentarios ? this.quill.clipboard.convert(htmlSemComentarios) : new Delta().insert(texto);
+    const delta = new Delta().retain(range.index).delete(range.length).concat(conteudoColado);
+
+    this.quill.updateContents(delta, Quill.sources.USER);
+    this.quill.setSelection(range.index + conteudoColado.length(), 0, Quill.sources.SILENT);
+  };
+
+  private htmlPossuiComentario(html: string): boolean {
+    return /<\s*comentario[\s>]/i.test(html) || html.includes(COMENTARIO_ID_ATTRIBUTE);
+  }
+
+  private removerComentariosDoHtml(html: string): string {
+    const container = document.createElement('div');
+    container.innerHTML = html;
+
+    container.querySelectorAll(COMENTARIO_TAG).forEach(el => {
+      while (el.firstChild) {
+        el.parentNode?.insertBefore(el.firstChild, el);
+      }
+      el.remove();
+    });
+
+    container.querySelectorAll(`[${COMENTARIO_ID_ATTRIBUTE}]`).forEach(el => el.removeAttribute(COMENTARIO_ID_ATTRIBUTE));
+    container.querySelectorAll('.comentario-selecionado').forEach(el => el.classList.remove('comentario-selecionado'));
+
+    return container.innerHTML;
   }
 
   adicionar(idSequenciaComentario: string, range = this.quill.getSelection()): boolean {
@@ -61,6 +111,14 @@ class ModuloComentario extends Module {
     const ranges = this.getRangesComentario(idSequenciaComentario);
     ranges.forEach(range => this.quill.formatText(range.index, range.length, COMENTARIO_FORMAT, false, Quill.sources.USER));
     return ranges.length > 0;
+  }
+
+  existe(idSequenciaComentario: string): boolean {
+    if (!idSequenciaComentario) {
+      return false;
+    }
+
+    return this.quill.getContents().ops.some((op: any) => op.attributes?.[COMENTARIO_FORMAT] === idSequenciaComentario);
   }
 
   rangePossuiComentario(range: any): boolean {
@@ -105,16 +163,13 @@ class ModuloComentario extends Module {
   }
 
   getTextoComentario(idSequenciaComentario: string): string {
-    return this.quill
-      .getContents()
-      .ops.reduce((texto: string, op: any) => {
-        if (typeof op.insert !== 'string' || op.attributes?.[COMENTARIO_FORMAT] !== idSequenciaComentario) {
-          return texto;
-        }
+    return this.quill.getContents().ops.reduce((texto: string, op: any) => {
+      if (typeof op.insert !== 'string' || op.attributes?.[COMENTARIO_FORMAT] !== idSequenciaComentario) {
+        return texto;
+      }
 
-        return texto + op.insert;
-      }, '')
-      .trim();
+      return texto + op.insert;
+    }, '');
   }
 }
 

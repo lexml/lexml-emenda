@@ -174,6 +174,9 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
   private tamanhoTextoModalComentario = 0;
 
   @state()
+  private comentarioModalPossuiTexto = false;
+
+  @state()
   autoria = new Autoria();
 
   @query('lexml-emenda-substituicao-termo')
@@ -875,6 +878,8 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
       this.buildAlertaJustificativa(comandoEmenda);
     }
 
+    this.sincronizarSequenciasComentarioComTexto();
+
     if (this.sequenciasComentario.length) {
       this.requestUpdate();
     }
@@ -1274,16 +1279,16 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
         .comentario-sequencia__trecho {
           display: block;
           border-left: 3px solid #f59e0b;
-          border-radius: 3px;
-          background: #fef9c3;
-          color: #7c5a11;
+          border-radius: 7px;
+          background: #f3f2ed;
+          color: #374151;
           font-family: var(--eta-font-serif);
-          font-size: 0.86rem;
+          font-size: 0.88rem;
           font-style: italic;
-          line-height: 1.4;
+          line-height: 1.45;
           margin: 0 0 12px;
           overflow: hidden;
-          padding: 8px 12px;
+          padding: 10px 12px;
           white-space: nowrap;
         }
 
@@ -1305,7 +1310,7 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
           min-width: 0;
           overflow: hidden;
           text-overflow: ellipsis;
-          white-space: nowrap;
+          white-space: pre;
         }
 
         .comentario-sequencia__comentarios {
@@ -1461,7 +1466,7 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
         }
 
         .comentario-modal__trecho {
-          border-left: 3px solid #60a5fa;
+          border-left: 3px solid #f59e0b;
           border-radius: 7px;
           background: #f3f2ed;
           color: #374151;
@@ -1471,8 +1476,28 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
           line-height: 1.45;
           overflow: hidden;
           padding: 10px 12px;
-          text-overflow: ellipsis;
           white-space: nowrap;
+        }
+
+        .comentario-modal__trecho-conteudo {
+          display: inline-flex;
+          max-width: 100%;
+          min-width: 0;
+          vertical-align: bottom;
+        }
+
+        .comentario-modal__trecho-conteudo::before,
+        .comentario-modal__trecho-conteudo::after {
+          content: '"';
+          flex: none;
+        }
+
+        .comentario-modal__trecho-texto {
+          flex: 1;
+          min-width: 0;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: pre;
         }
 
         .comentario-modal__textarea {
@@ -1814,7 +1839,7 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
   private getTrechoComentario(seq: SequenciaComentario): string {
     const editor = this.getEditorTextoRicoByLocalComentario(seq.local);
     const trecho = editor?.getTextoComentario?.(seq.id);
-    return trecho || 'Trecho comentado não localizado.';
+    return typeof trecho === 'string' && trecho.length > 0 ? trecho : 'Trecho comentado não localizado.';
   }
 
   private getEditorTextoRicoByLocalComentario(local: TipoLocalComentario): any {
@@ -1846,7 +1871,11 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
           ? html`
               <div class="comentario-modal__grupo">
                 <span class="comentario-modal__label">Trecho selecionado</span>
-                <div class="comentario-modal__trecho">"${this.textoTrechoComentarioAtual}"</div>
+                <div class="comentario-modal__trecho">
+                  <span class="comentario-modal__trecho-conteudo">
+                    <span class="comentario-modal__trecho-texto">${this.textoTrechoComentarioAtual}</span>
+                  </span>
+                </div>
               </div>
             `
           : ''}
@@ -1863,7 +1892,7 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
         </div>
         <div slot="footer" class="comentario-dialog__footer">
           <sl-button variant="default" @click=${this.fecharModalComentario}>Cancelar</sl-button>
-          <sl-button variant="primary" @click=${this.confirmarComentarioEstatico}>
+          <sl-button variant="primary" ?disabled=${!this.comentarioModalPossuiTexto} @click=${this.confirmarComentarioEstatico}>
             <span slot="prefix" class="comentario-modal__botao-icone">${unsafeHTML(iconeComentario)}</span>
             Comentar
           </sl-button>
@@ -1934,10 +1963,11 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
   private abrirModalComentario(titulo: string, textoInicial = ''): void {
     this.tituloModalComentario = titulo;
     this.tamanhoTextoModalComentario = textoInicial.length;
+    this.comentarioModalPossuiTexto = textoInicial.trim().length > 0;
     setTimeout(() => {
       if (this.comentarioTextarea) {
         this.comentarioTextarea.value = textoInicial;
-        this.tamanhoTextoModalComentario = this.comentarioTextarea.value.length;
+        this.atualizarEstadoTextoModalComentario(this.comentarioTextarea.value);
       }
       this.comentarioModal?.show();
       this.comentarioTextarea?.focus();
@@ -1955,8 +1985,13 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
   }
 
   private atualizarContadorComentario = (): void => {
-    this.tamanhoTextoModalComentario = this.comentarioTextarea?.value?.length || 0;
+    this.atualizarEstadoTextoModalComentario(this.comentarioTextarea?.value || '');
   };
+
+  private atualizarEstadoTextoModalComentario(texto: string): void {
+    this.tamanhoTextoModalComentario = texto.length;
+    this.comentarioModalPossuiTexto = texto.trim().length > 0;
+  }
 
   private fecharModalComentario = (): void => {
     this.comentarioModal?.hide();
@@ -2048,12 +2083,42 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
 
     this.getEditorTextoRicoByLocalComentario(sequenciaComentario.local)?.removerComentario?.(idSequenciaComentario);
     this.sequenciasComentario = this.sequenciasComentario.filter(seq => seq.id !== idSequenciaComentario);
+    this.limparEstadoSequenciaComentario(idSequenciaComentario);
+  }
 
+  private sincronizarSequenciasComentarioComTexto(): void {
+    if (!this.sequenciasComentario.length) {
+      return;
+    }
+
+    const idsRemovidos: string[] = [];
+    const sequenciasComentario = this.sequenciasComentario.filter(seq => {
+      const editor = this.getEditorTextoRicoByLocalComentario(seq.local);
+      const possuiComentario = editor?.possuiComentario?.(seq.id);
+
+      if (possuiComentario === false) {
+        idsRemovidos.push(seq.id);
+        return false;
+      }
+
+      return true;
+    });
+
+    if (idsRemovidos.length) {
+      this.sequenciasComentario = sequenciasComentario;
+      idsRemovidos.forEach(idSequenciaComentario => this.limparEstadoSequenciaComentario(idSequenciaComentario));
+    }
+  }
+
+  private limparEstadoSequenciaComentario(idSequenciaComentario: string): void {
     if (this.idSequenciaComentarioRespostaAtual === idSequenciaComentario) {
       this.idSequenciaComentarioRespostaAtual = undefined;
     }
     if (this.comentarioEdicaoAtual?.idSequenciaComentario === idSequenciaComentario) {
       this.comentarioEdicaoAtual = undefined;
+    }
+    if (this.idSequenciaComentarioExclusaoAtual === idSequenciaComentario) {
+      this.idSequenciaComentarioExclusaoAtual = undefined;
     }
   }
 
