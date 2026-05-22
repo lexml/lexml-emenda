@@ -219,6 +219,31 @@ describe('LexmlEmendaComponent - comentários', () => {
     expect(component.ordenacaoComentarios).to.equal('recentes');
   });
 
+  it('Deveria destacar comentário atual e solicitar rolagem quando a aba de comentários estiver ativa', () => {
+    const component = new LexmlEmendaComponent() as any;
+    component.sequenciasComentario = [criarSequenciaComentarioComId('sc1', criarComentario('Texto original'))];
+    let solicitouRolagem = false;
+    component.isAbaComentariosAtiva = (): boolean => true;
+    component.rolarParaComentarioAtual = (): void => {
+      solicitouRolagem = true;
+    };
+
+    component.atualizarComentarioAtual(new CustomEvent('comentario-selecionado', { detail: { idSequenciaComentario: 'sc1' } }));
+
+    expect(component.idSequenciaComentarioAtual).to.equal('sc1');
+    expect(solicitouRolagem).to.be.true;
+  });
+
+  it('Deveria limpar destaque quando o cursor sair de um trecho comentado', () => {
+    const component = new LexmlEmendaComponent() as any;
+    component.sequenciasComentario = [criarSequenciaComentarioComId('sc1', criarComentario('Texto original'))];
+    component.idSequenciaComentarioAtual = 'sc1';
+
+    component.atualizarComentarioAtual(new CustomEvent('comentario-selecionado', { detail: {} }));
+
+    expect(component.idSequenciaComentarioAtual).to.be.undefined;
+  });
+
   it('Deveria abrir modal de confirmação para excluir comentário do usuário', () => {
     const component = new LexmlEmendaComponent() as any;
     component.sequenciasComentario = [criarSequenciaComentario(criarComentario('Texto original'), criarComentario('Resposta original'))];

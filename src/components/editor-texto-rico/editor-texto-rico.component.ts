@@ -580,12 +580,14 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
 
     const elComentario = this.getElementoComentarioNoRange(range);
     if (!elComentario) {
+      this.dispatchEventComentarioSelecionado(undefined);
       return;
     }
 
     const idSequenciaComentario = elComentario.getAttribute('id-sequencia-comentario');
     if (!idSequenciaComentario) {
       elComentario.classList.add('comentario-selecionado');
+      this.dispatchEventComentarioSelecionado(undefined);
       return;
     }
 
@@ -594,6 +596,20 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
         el.classList.add('comentario-selecionado');
       }
     });
+    this.dispatchEventComentarioSelecionado(idSequenciaComentario);
+  }
+
+  private dispatchEventComentarioSelecionado(idSequenciaComentario?: string): void {
+    this.dispatchEvent(
+      new CustomEvent('comentario-selecionado', {
+        bubbles: true,
+        composed: true,
+        detail: {
+          idSequenciaComentario,
+          modo: this.modo,
+        },
+      })
+    );
   }
 
   private atualizaDestaqueRevisaoSelecionada(range: any): void {

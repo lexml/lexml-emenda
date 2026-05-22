@@ -180,6 +180,9 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
   private ordenacaoComentarios: 'recentes' | 'texto' = 'recentes';
 
   @state()
+  private idSequenciaComentarioAtual?: string;
+
+  @state()
   autoria = new Autoria();
 
   @query('lexml-emenda-substituicao-termo')
@@ -771,6 +774,8 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
           badge.setAttribute('variant', 'primmay');
         }
         localStorage.setItem('naoPulsarBadgeAtalhos', 'true');
+      } else if (tabName === 'comentarios') {
+        this.rolarParaComentarioAtual();
       }
     });
   }
@@ -1634,6 +1639,7 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
                 registroEvento="justificativa"
                 @onchange=${this.onChange}
                 @abrir-modal-comentario=${this.abrirModalAdicionarComentario}
+                @comentario-selecionado=${this.atualizarComentarioAtual}
               ></lexml-emenda-editor-texto-rico>
               <lexml-emenda-substituicao-termo style="display: ${this.isEmendaSubstituicaoTermo() ? 'block' : 'none'}" @onchange=${this.onChange}></lexml-emenda-substituicao-termo>
             </sl-tab-panel>
@@ -1645,6 +1651,7 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
                 registroEvento="justificativa"
                 @onchange=${this.onChange}
                 @abrir-modal-comentario=${this.abrirModalAdicionarComentario}
+                @comentario-selecionado=${this.atualizarComentarioAtual}
               ></lexml-emenda-editor-texto-rico>
             </sl-tab-panel>
             <sl-tab-panel name="autoria" class="overflow-hidden">
@@ -1772,7 +1779,38 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
   private alterarOrdenacaoComentarios = (event: Event): void => {
     const value = (event.target as HTMLSelectElement).value;
     this.ordenacaoComentarios = value === 'texto' ? 'texto' : 'recentes';
+    this.rolarParaComentarioAtual();
   };
+
+  private atualizarComentarioAtual = (event: CustomEvent): void => {
+    const idSequenciaComentario = event.detail?.idSequenciaComentario;
+    const idAtual = this.sequenciasComentario.some(seq => seq.id === idSequenciaComentario) ? idSequenciaComentario : undefined;
+
+    if (this.idSequenciaComentarioAtual === idAtual) {
+      return;
+    }
+
+    this.idSequenciaComentarioAtual = idAtual;
+
+    if (idAtual && this.isAbaComentariosAtiva()) {
+      this.rolarParaComentarioAtual();
+    }
+  };
+
+  private isAbaComentariosAtiva(): boolean {
+    return !!this.querySelector('sl-tab[panel="comentarios"][active], sl-tab-panel[name="comentarios"][active]');
+  }
+
+  private rolarParaComentarioAtual(): void {
+    if (!this.idSequenciaComentarioAtual || !this.isAbaComentariosAtiva()) {
+      return;
+    }
+
+    void this.updateComplete.then(() => {
+      const card = this.querySelector(`[data-id-sequencia-comentario="${this.idSequenciaComentarioAtual}"]`) as HTMLElement | null;
+      card?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }
 
   private getSequenciasComentarioOrdenadas(): SequenciaComentario[] {
     const sequenciasComIndice = this.sequenciasComentario.map((seq, index) => ({ seq, index }));
@@ -1818,9 +1856,10 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
     const origemLabel = seq.local === TipoLocalComentario.JUSTIFICACAO ? 'Na justificação' : 'No texto';
     const origemClass = seq.local === TipoLocalComentario.JUSTIFICACAO ? 'comentario-sequencia__origem--justificativa' : 'comentario-sequencia__origem--texto';
     const trecho = this.getTrechoComentario(seq);
+    const selecionada = this.idSequenciaComentarioAtual === seq.id;
 
     return html`
-      <article class="comentario-sequencia">
+      <article class="comentario-sequencia ${selecionada ? 'comentario-sequencia--selecionada' : ''}" data-id-sequencia-comentario=${seq.id}>
         <div class="comentario-sequencia__topo">
           <span class="comentario-sequencia__origem ${origemClass}">${origemLabel}</span>
           <span class="comentario-sequencia__acoes">
@@ -2257,6 +2296,9 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
     }
     if (this.idSequenciaComentarioExclusaoAtual === idSequenciaComentario) {
       this.idSequenciaComentarioExclusaoAtual = undefined;
+    }
+    if (this.idSequenciaComentarioAtual === idSequenciaComentario) {
+      this.idSequenciaComentarioAtual = undefined;
     }
   }
 

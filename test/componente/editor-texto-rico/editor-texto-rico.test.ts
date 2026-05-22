@@ -165,6 +165,24 @@ describe('Testando lexml-emenda-editor-texto-rico (EditorTextoRicoComponent)', (
     expect(editorTextoRico.getIndiceComentario('sc123')).to.equal(6);
   });
 
+  it('Deveria emitir evento com a sequência de comentário sob o cursor', async () => {
+    editorTextoRico.setContent('<p>Texto para comentário.</p>');
+    editorTextoRico.quill?.setSelection(0, 5);
+    editorTextoRico.adicionarComentario('sc123');
+    let detalheEvento: any;
+    editorTextoRico.addEventListener('comentario-selecionado', (ev: Event) => {
+      detalheEvento = (ev as CustomEvent).detail;
+    });
+
+    editorTextoRico.quill?.setSelection(2, 0);
+    editorTextoRico.onSelectionChange(editorTextoRico.quill?.getSelection());
+
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    expect(detalheEvento?.idSequenciaComentario).to.equal('sc123');
+    expect(detalheEvento?.modo).to.equal(editorTextoRico.modo);
+  });
+
   it('Deveria preservar marcação de comentário ao carregar conteúdo no editor', () => {
     editorTextoRico.setContent('<p><comentario id-sequencia-comentario="sc123">Texto comentado</comentario></p>');
 
