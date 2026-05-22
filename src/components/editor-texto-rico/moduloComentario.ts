@@ -121,6 +121,15 @@ class ModuloComentario extends Module {
     return this.quill.getContents().ops.some((op: any) => op.attributes?.[COMENTARIO_FORMAT] === idSequenciaComentario);
   }
 
+  getIndice(idSequenciaComentario: string): number | undefined {
+    if (!idSequenciaComentario) {
+      return undefined;
+    }
+
+    const range = this.getRangesComentario(idSequenciaComentario)[0];
+    return range?.index;
+  }
+
   rangePossuiComentario(range: any): boolean {
     if (!range?.length) {
       return false;

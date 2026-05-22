@@ -156,6 +156,15 @@ describe('Testando lexml-emenda-editor-texto-rico (EditorTextoRicoComponent)', (
     expect(editorTextoRico.getTextoComentario('sc123')).to.equal('   ');
   });
 
+  it('Deveria informar a posição inicial do comentário no texto', () => {
+    editorTextoRico.setContent('<p>Antes texto depois.</p>');
+    editorTextoRico.quill?.setSelection(6, 5);
+
+    editorTextoRico.adicionarComentario('sc123');
+
+    expect(editorTextoRico.getIndiceComentario('sc123')).to.equal(6);
+  });
+
   it('Deveria preservar marcação de comentário ao carregar conteúdo no editor', () => {
     editorTextoRico.setContent('<p><comentario id-sequencia-comentario="sc123">Texto comentado</comentario></p>');
 

@@ -562,6 +562,10 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
     return moduloComentario ? moduloComentario.existe(idSequenciaComentario) : undefined;
   }
 
+  public getIndiceComentario(idSequenciaComentario: string): number | undefined {
+    return (this.quill as any)?.comentarios?.getIndice(idSequenciaComentario);
+  }
+
   private rangePossuiComentario(range: any): boolean {
     return !!(this.quill as any)?.comentarios?.rangePossuiComentario(range);
   }

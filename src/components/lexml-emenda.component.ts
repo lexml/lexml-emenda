@@ -177,6 +177,9 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
   private comentarioModalPossuiTexto = false;
 
   @state()
+  private ordenacaoComentarios: 'recentes' | 'texto' = 'recentes';
+
+  @state()
   autoria = new Autoria();
 
   @query('lexml-emenda-substituicao-termo')
@@ -1745,23 +1748,70 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
   }
 
   renderComentariosEstaticos(): TemplateResult {
+    const sequenciasComentario = this.getSequenciasComentarioOrdenadas();
+
     return html`
       <div class="comentarios">
         <div class="comentarios__cabecalho">
           <h4>Comentários</h4>
           <label class="comentarios__ordenacao-container">
             Ordenar
-            <select class="comentarios__ordenacao" aria-label="Ordenação dos comentários">
-              <option>Recentes</option>
-              <option>Ordem no texto</option>
+            <select class="comentarios__ordenacao" aria-label="Ordenação dos comentários" .value=${this.ordenacaoComentarios} @change=${this.alterarOrdenacaoComentarios}>
+              <option value="recentes">Recentes</option>
+              <option value="texto">Ordem no texto</option>
             </select>
           </label>
         </div>
-        ${this.sequenciasComentario.length
-          ? html`<div class="comentarios__lista">${this.sequenciasComentario.map(seq => this.renderSequenciaComentario(seq))}</div>`
+        ${sequenciasComentario.length
+          ? html`<div class="comentarios__lista">${sequenciasComentario.map(seq => this.renderSequenciaComentario(seq))}</div>`
           : html`<span class="comentarios-texto-vazio">Não há comentários registrados.</span>`}
       </div>
     `;
+  }
+
+  private alterarOrdenacaoComentarios = (event: Event): void => {
+    const value = (event.target as HTMLSelectElement).value;
+    this.ordenacaoComentarios = value === 'texto' ? 'texto' : 'recentes';
+  };
+
+  private getSequenciasComentarioOrdenadas(): SequenciaComentario[] {
+    const sequenciasComIndice = this.sequenciasComentario.map((seq, index) => ({ seq, index }));
+
+    if (this.ordenacaoComentarios === 'texto') {
+      return sequenciasComIndice
+        .sort((a, b) => {
+          const local = this.getOrdemLocalComentario(a.seq.local) - this.getOrdemLocalComentario(b.seq.local);
+          if (local !== 0) {
+            return local;
+          }
+
+          const posicao = this.getPosicaoSequenciaComentario(a.seq) - this.getPosicaoSequenciaComentario(b.seq);
+          return posicao !== 0 ? posicao : a.index - b.index;
+        })
+        .map(item => item.seq);
+    }
+
+    return sequenciasComIndice
+      .sort((a, b) => {
+        const data = this.getDataUltimoComentario(b.seq) - this.getDataUltimoComentario(a.seq);
+        return data !== 0 ? data : a.index - b.index;
+      })
+      .map(item => item.seq);
+  }
+
+  private getOrdemLocalComentario(local: TipoLocalComentario): number {
+    return local === TipoLocalComentario.TEXTO ? 0 : 1;
+  }
+
+  private getPosicaoSequenciaComentario(seq: SequenciaComentario): number {
+    const posicao = this.getEditorTextoRicoByLocalComentario(seq.local)?.getIndiceComentario?.(seq.id);
+    return typeof posicao === 'number' ? posicao : Number.MAX_SAFE_INTEGER;
+  }
+
+  private getDataUltimoComentario(seq: SequenciaComentario): number {
+    const dataHora = seq.comentarios[seq.comentarios.length - 1]?.dataHora;
+    const timestamp = dataHora ? new Date(dataHora.replace(' ', 'T')).getTime() : 0;
+    return Number.isNaN(timestamp) ? 0 : timestamp;
   }
 
   private renderSequenciaComentario(seq: SequenciaComentario): TemplateResult {

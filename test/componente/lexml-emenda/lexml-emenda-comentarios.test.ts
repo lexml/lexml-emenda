@@ -165,6 +165,60 @@ describe('LexmlEmendaComponent - comentários', () => {
     expect(component.sequenciasComentario[0].comentarios).to.have.length(1);
   });
 
+  it('Deveria ordenar comentários pelos mais recentes considerando a última resposta', () => {
+    const component = new LexmlEmendaComponent() as any;
+    const sequenciaComRespostaRecente = criarSequenciaComentarioComId('sc1', criarComentario('Comentário antigo'), criarComentario('Resposta recente'));
+    sequenciaComRespostaRecente.comentarios[0].dataHora = '2026-05-20 10:00:00';
+    sequenciaComRespostaRecente.comentarios[1].dataHora = '2026-05-22 09:00:00';
+    const sequenciaRecenteSemResposta = criarSequenciaComentarioComId('sc2', criarComentario('Comentário recente'));
+    sequenciaRecenteSemResposta.comentarios[0].dataHora = '2026-05-21 18:00:00';
+    const sequenciaAntiga = criarSequenciaComentarioComId('sc3', criarComentario('Comentário antigo'));
+    sequenciaAntiga.comentarios[0].dataHora = '2026-05-19 08:00:00';
+    component.sequenciasComentario = [sequenciaAntiga, sequenciaRecenteSemResposta, sequenciaComRespostaRecente];
+    component.ordenacaoComentarios = 'recentes';
+
+    const idsOrdenados = component.getSequenciasComentarioOrdenadas().map((seq: SequenciaComentario) => seq.id);
+
+    expect(idsOrdenados).to.deep.equal(['sc1', 'sc2', 'sc3']);
+  });
+
+  it('Deveria ordenar comentários por apresentação no texto, priorizando texto livre antes da justificação', () => {
+    const component = new LexmlEmendaComponent() as any;
+    const sequenciaJustificacao = criarSequenciaComentarioComId('scJustificacao', criarComentario('Comentário na justificação'));
+    const sequenciaTextoDepois = Object.assign(criarSequenciaComentarioComId('scTextoDepois', criarComentario('Comentário no texto depois')), { local: TipoLocalComentario.TEXTO });
+    const sequenciaTextoAntes = Object.assign(criarSequenciaComentarioComId('scTextoAntes', criarComentario('Comentário no texto antes')), { local: TipoLocalComentario.TEXTO });
+    component.sequenciasComentario = [sequenciaJustificacao, sequenciaTextoDepois, sequenciaTextoAntes];
+    component.ordenacaoComentarios = 'texto';
+    Object.defineProperty(component, '_lexmlEmendaTextoRico', {
+      value: {
+        getIndiceComentario: (idSequenciaComentario: string): number => ({ scTextoDepois: 30, scTextoAntes: 5 }[idSequenciaComentario] ?? 0),
+      },
+      configurable: true,
+    });
+    Object.defineProperty(component, '_lexmlJustificativa', {
+      value: {
+        getIndiceComentario: (): number => 0,
+      },
+      configurable: true,
+    });
+
+    const idsOrdenados = component.getSequenciasComentarioOrdenadas().map((seq: SequenciaComentario) => seq.id);
+
+    expect(idsOrdenados).to.deep.equal(['scTextoAntes', 'scTextoDepois', 'scJustificacao']);
+  });
+
+  it('Deveria alterar a ordenação selecionada na aba de comentários', () => {
+    const component = new LexmlEmendaComponent() as any;
+
+    component.alterarOrdenacaoComentarios({ target: { value: 'texto' } } as any);
+
+    expect(component.ordenacaoComentarios).to.equal('texto');
+
+    component.alterarOrdenacaoComentarios({ target: { value: 'recentes' } } as any);
+
+    expect(component.ordenacaoComentarios).to.equal('recentes');
+  });
+
   it('Deveria abrir modal de confirmação para excluir comentário do usuário', () => {
     const component = new LexmlEmendaComponent() as any;
     component.sequenciasComentario = [criarSequenciaComentario(criarComentario('Texto original'), criarComentario('Resposta original'))];
