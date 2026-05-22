@@ -1852,6 +1852,69 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
     return Number.isNaN(timestamp) ? 0 : timestamp;
   }
 
+  private selecionarSequenciaComentario(idSequenciaComentario: string, event?: Event, manterFocoNoCard = false): void {
+    if (event && this.isEventoEmElementoInterativo(event)) {
+      return;
+    }
+
+    const sequenciaComentario = this.sequenciasComentario.find(seq => seq.id === idSequenciaComentario);
+    if (!sequenciaComentario) {
+      return;
+    }
+
+    this.idSequenciaComentarioAtual = idSequenciaComentario;
+    (event?.currentTarget as HTMLElement | undefined)?.focus?.();
+    this._tabsEsquerda?.show(this.getNomeAbaComentario(sequenciaComentario.local));
+    this.rolarParaComentarioAtual();
+    this.posicionarCursorNoComentario(sequenciaComentario, manterFocoNoCard);
+  }
+
+  private navegarSequenciaComentarioPorTeclado(event: KeyboardEvent, idSequenciaComentario: string): void {
+    if (!['ArrowDown', 'ArrowUp'].includes(event.key) || this.isEventoEmElementoInterativo(event)) {
+      return;
+    }
+
+    const sequenciasComentario = this.getSequenciasComentarioOrdenadas();
+    const indexAtual = sequenciasComentario.findIndex(seq => seq.id === idSequenciaComentario);
+    const proximoIndex = event.key === 'ArrowDown' ? indexAtual + 1 : indexAtual - 1;
+    const proximaSequencia = sequenciasComentario[proximoIndex];
+    if (!proximaSequencia) {
+      return;
+    }
+
+    event.preventDefault();
+    this.selecionarSequenciaComentario(proximaSequencia.id, undefined, true);
+  }
+
+  private isEventoEmElementoInterativo(event: Event): boolean {
+    const target = event.target as HTMLElement | null;
+    return !!target?.closest?.('button, sl-button, textarea, input, select, a');
+  }
+
+  private getNomeAbaComentario(local: TipoLocalComentario): string {
+    return local === TipoLocalComentario.TEXTO ? 'lexml-emenda-eta' : 'justificativa';
+  }
+
+  private posicionarCursorNoComentario(sequenciaComentario: SequenciaComentario, manterFocoNoCard = false): void {
+    const idSequenciaComentario = sequenciaComentario.id;
+    setTimeout(() => {
+      this.getEditorTextoRicoByLocalComentario(sequenciaComentario.local)?.posicionarCursorComentario?.(idSequenciaComentario);
+      if (this.sequenciasComentario.some(seq => seq.id === idSequenciaComentario)) {
+        this.idSequenciaComentarioAtual = idSequenciaComentario;
+      }
+      if (manterFocoNoCard) {
+        this.focarCardSequenciaComentario(idSequenciaComentario);
+      }
+    }, 0);
+  }
+
+  private focarCardSequenciaComentario(idSequenciaComentario: string): void {
+    void this.updateComplete.then(() => {
+      const card = this.querySelector(`[data-id-sequencia-comentario="${idSequenciaComentario}"]`) as HTMLElement | null;
+      card?.focus();
+    });
+  }
+
   private renderSequenciaComentario(seq: SequenciaComentario): TemplateResult {
     const origemLabel = seq.local === TipoLocalComentario.JUSTIFICACAO ? 'Na justificação' : 'No texto';
     const origemClass = seq.local === TipoLocalComentario.JUSTIFICACAO ? 'comentario-sequencia__origem--justificativa' : 'comentario-sequencia__origem--texto';
@@ -1859,7 +1922,14 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
     const selecionada = this.idSequenciaComentarioAtual === seq.id;
 
     return html`
-      <article class="comentario-sequencia ${selecionada ? 'comentario-sequencia--selecionada' : ''}" data-id-sequencia-comentario=${seq.id}>
+      <article
+        class="comentario-sequencia ${selecionada ? 'comentario-sequencia--selecionada' : ''}"
+        data-id-sequencia-comentario=${seq.id}
+        tabindex="0"
+        aria-selected=${selecionada ? 'true' : 'false'}
+        @click=${(event: MouseEvent) => this.selecionarSequenciaComentario(seq.id, event)}
+        @keydown=${(event: KeyboardEvent) => this.navegarSequenciaComentarioPorTeclado(event, seq.id)}
+      >
         <div class="comentario-sequencia__topo">
           <span class="comentario-sequencia__origem ${origemClass}">${origemLabel}</span>
           <span class="comentario-sequencia__acoes">

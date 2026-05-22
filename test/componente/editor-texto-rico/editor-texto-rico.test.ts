@@ -165,6 +165,65 @@ describe('Testando lexml-emenda-editor-texto-rico (EditorTextoRicoComponent)', (
     expect(editorTextoRico.getIndiceComentario('sc123')).to.equal(6);
   });
 
+  it('Deveria posicionar o cursor no início do comentário', () => {
+    editorTextoRico.setContent('<p>Antes texto depois.</p>');
+    editorTextoRico.quill?.setSelection(6, 5);
+    editorTextoRico.adicionarComentario('sc123');
+    editorTextoRico.quill?.setSelection(0, 0);
+
+    const cursorPosicionado = editorTextoRico.posicionarCursorComentario('sc123');
+
+    expect(cursorPosicionado).to.be.true;
+    expect(editorTextoRico.quill?.getSelection()?.index).to.equal(6);
+    expect(editorTextoRico.quill?.getSelection()?.length).to.equal(0);
+    expect(editorTextoRico.quill!.root.querySelector('comentario')?.classList.contains('comentario-selecionado')).to.be.true;
+  });
+
+  it('Deveria centralizar o comentário no editor ao posicionar o cursor', () => {
+    editorTextoRico.setContent('<p>Antes texto depois.</p>');
+    editorTextoRico.quill?.setSelection(6, 5);
+    editorTextoRico.adicionarComentario('sc123');
+
+    const root = editorTextoRico.quill!.root as HTMLElement;
+    const comentario = root.querySelector('comentario') as HTMLElement;
+    let scrollTopCentralizado = 0;
+    definirRect(root, criarRect(0, 0, 500, 200));
+    definirRect(comentario, criarRect(0, 300, 120, 20));
+    Object.defineProperty(root, 'clientHeight', { value: 200, configurable: true });
+    Object.defineProperty(root, 'scrollTop', { value: 100, writable: true, configurable: true });
+    Object.defineProperty(root, 'scrollTo', {
+      value: (options: ScrollToOptions): void => {
+        scrollTopCentralizado = Number(options.top);
+      },
+      configurable: true,
+    });
+    (editorTextoRico.quill as any).scrollingContainer = root;
+
+    editorTextoRico.posicionarCursorComentario('sc123');
+
+    expect(scrollTopCentralizado).to.equal(310);
+  });
+
+  it('Não deveria limpar comentário selecionado quando o editor perder foco', async () => {
+    editorTextoRico.setContent('<p>Antes texto depois.</p>');
+    editorTextoRico.quill?.setSelection(6, 5);
+    editorTextoRico.adicionarComentario('sc123');
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    const comentario = editorTextoRico.quill!.root.querySelector('comentario') as HTMLElement;
+    comentario.classList.add('comentario-selecionado');
+    let eventoDisparado = false;
+    editorTextoRico.addEventListener('comentario-selecionado', () => {
+      eventoDisparado = true;
+    });
+
+    editorTextoRico.onSelectionChange(null);
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    expect(eventoDisparado).to.be.false;
+    expect(comentario.classList.contains('comentario-selecionado')).to.be.true;
+  });
+
   it('Deveria emitir evento com a sequência de comentário sob o cursor', async () => {
     editorTextoRico.setContent('<p>Texto para comentário.</p>');
     editorTextoRico.quill?.setSelection(0, 5);
@@ -181,6 +240,24 @@ describe('Testando lexml-emenda-editor-texto-rico (EditorTextoRicoComponent)', (
 
     expect(detalheEvento?.idSequenciaComentario).to.equal('sc123');
     expect(detalheEvento?.modo).to.equal(editorTextoRico.modo);
+  });
+
+  it('Deveria destacar comentario quando o cursor estiver no inicio do trecho comentado', async () => {
+    editorTextoRico.setContent('<p>Antes texto depois.</p>');
+    editorTextoRico.quill?.setSelection(6, 5);
+    editorTextoRico.adicionarComentario('sc123');
+    let detalheEvento: any;
+    editorTextoRico.addEventListener('comentario-selecionado', (ev: Event) => {
+      detalheEvento = (ev as CustomEvent).detail;
+    });
+
+    editorTextoRico.quill?.setSelection(6, 0);
+    editorTextoRico.onSelectionChange(editorTextoRico.quill?.getSelection());
+
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    expect(detalheEvento?.idSequenciaComentario).to.equal('sc123');
+    expect(editorTextoRico.quill!.root.querySelector('comentario')?.classList.contains('comentario-selecionado')).to.be.true;
   });
 
   it('Deveria preservar marcação de comentário ao carregar conteúdo no editor', () => {

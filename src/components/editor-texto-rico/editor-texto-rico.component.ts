@@ -566,12 +566,63 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
     return (this.quill as any)?.comentarios?.getIndice(idSequenciaComentario);
   }
 
+  public posicionarCursorComentario(idSequenciaComentario: string): boolean {
+    const indice = this.getIndiceComentario(idSequenciaComentario);
+    if (typeof indice !== 'number' || !this.quill) {
+      return false;
+    }
+
+    this.quill.setSelection(indice, 0, Quill.sources.USER);
+    this.quill.focus();
+    this.onSelectionChange(this.quill.getSelection());
+    this.destacarComentarioPorId(idSequenciaComentario);
+    this.centralizarComentarioNoEditor(idSequenciaComentario);
+    setTimeout(() => {
+      this.destacarComentarioPorId(idSequenciaComentario);
+      this.centralizarComentarioNoEditor(idSequenciaComentario);
+    }, 0);
+    return true;
+  }
+
+  private centralizarComentarioNoEditor(idSequenciaComentario: string): void {
+    if (!this.quill?.root) {
+      return;
+    }
+
+    const comentario = Array.from(this.quill.root.querySelectorAll('comentario')).find(el => el.getAttribute('id-sequencia-comentario') === idSequenciaComentario) as
+      | HTMLElement
+      | undefined;
+    if (!comentario) {
+      return;
+    }
+
+    const scrollingContainer = (((this.quill as any).scrollingContainer as HTMLElement | undefined) || this.quill.root) as HTMLElement;
+    if (!scrollingContainer.clientHeight) {
+      comentario.scrollIntoView?.({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+      return;
+    }
+
+    const containerRect = scrollingContainer.getBoundingClientRect();
+    const comentarioRect = comentario.getBoundingClientRect();
+    const top = Math.max(0, scrollingContainer.scrollTop + comentarioRect.top - containerRect.top - scrollingContainer.clientHeight / 2 + comentarioRect.height / 2);
+
+    if (typeof scrollingContainer.scrollTo === 'function') {
+      scrollingContainer.scrollTo({ top, behavior: 'smooth' });
+    } else {
+      scrollingContainer.scrollTop = top;
+    }
+  }
+
   private rangePossuiComentario(range: any): boolean {
     return !!(this.quill as any)?.comentarios?.rangePossuiComentario(range);
   }
 
   private atualizaDestaqueComentarioSelecionado(range: any): void {
     if (!this.quill?.root) {
+      return;
+    }
+
+    if (!range) {
       return;
     }
 
@@ -597,6 +648,28 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
       }
     });
     this.dispatchEventComentarioSelecionado(idSequenciaComentario);
+  }
+
+  private destacarComentarioPorId(idSequenciaComentario: string): boolean {
+    if (!this.quill?.root) {
+      return false;
+    }
+
+    let destacouComentario = false;
+    const root = this.quill.root as HTMLElement;
+    root.querySelectorAll('comentario.comentario-selecionado').forEach(el => el.classList.remove('comentario-selecionado'));
+    root.querySelectorAll('comentario').forEach(el => {
+      if (el.getAttribute('id-sequencia-comentario') === idSequenciaComentario) {
+        el.classList.add('comentario-selecionado');
+        destacouComentario = true;
+      }
+    });
+
+    if (destacouComentario) {
+      this.dispatchEventComentarioSelecionado(idSequenciaComentario);
+    }
+
+    return destacouComentario;
   }
 
   private dispatchEventComentarioSelecionado(idSequenciaComentario?: string): void {
@@ -696,7 +769,7 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
       return null;
     }
 
-    const indexes = range.length ? [range.index, range.index + range.length - 1] : [range.index, range.index - 1];
+    const indexes = range.length ? [range.index, range.index + range.length - 1] : [range.index, range.index + 1, range.index - 1];
     for (const index of indexes) {
       if (index < 0 || index >= this.quill.getLength()) {
         continue;

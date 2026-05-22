@@ -244,6 +244,132 @@ describe('LexmlEmendaComponent - comentários', () => {
     expect(component.idSequenciaComentarioAtual).to.be.undefined;
   });
 
+  it('Deveria selecionar sequencia clicada, abrir justificativa e posicionar cursor no comentario', async () => {
+    const component = new LexmlEmendaComponent() as any;
+    component.sequenciasComentario = [criarSequenciaComentarioComId('sc1', criarComentario('Texto original'))];
+    component.isAbaComentariosAtiva = (): boolean => false;
+    let abaAberta = '';
+    let comentarioPosicionado = '';
+    Object.defineProperty(component, '_tabsEsquerda', {
+      value: {
+        show: (aba: string): void => {
+          abaAberta = aba;
+        },
+      },
+      configurable: true,
+    });
+    Object.defineProperty(component, '_lexmlJustificativa', {
+      value: {
+        posicionarCursorComentario: (idSequenciaComentario: string): boolean => {
+          comentarioPosicionado = idSequenciaComentario;
+          return true;
+        },
+      },
+      configurable: true,
+    });
+
+    component.selecionarSequenciaComentario('sc1');
+
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    expect(component.idSequenciaComentarioAtual).to.equal('sc1');
+    expect(abaAberta).to.equal('justificativa');
+    expect(comentarioPosicionado).to.equal('sc1');
+  });
+
+  it('Deveria abrir texto livre ao selecionar comentario no texto', async () => {
+    const component = new LexmlEmendaComponent() as any;
+    const sequenciaTexto = Object.assign(criarSequenciaComentarioComId('scTexto', criarComentario('Texto original')), { local: TipoLocalComentario.TEXTO });
+    component.sequenciasComentario = [sequenciaTexto];
+    component.isAbaComentariosAtiva = (): boolean => false;
+    let abaAberta = '';
+    let comentarioPosicionado = '';
+    Object.defineProperty(component, '_tabsEsquerda', {
+      value: {
+        show: (aba: string): void => {
+          abaAberta = aba;
+        },
+      },
+      configurable: true,
+    });
+    Object.defineProperty(component, '_lexmlEmendaTextoRico', {
+      value: {
+        posicionarCursorComentario: (idSequenciaComentario: string): boolean => {
+          comentarioPosicionado = idSequenciaComentario;
+          return true;
+        },
+      },
+      configurable: true,
+    });
+
+    component.selecionarSequenciaComentario('scTexto');
+
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    expect(abaAberta).to.equal('lexml-emenda-eta');
+    expect(comentarioPosicionado).to.equal('scTexto');
+  });
+
+  it('Nao deveria selecionar sequencia ao clicar em acao interna do card', () => {
+    const component = new LexmlEmendaComponent() as any;
+    component.sequenciasComentario = [criarSequenciaComentarioComId('sc1', criarComentario('Texto original'))];
+    const botao = document.createElement('button');
+
+    component.selecionarSequenciaComentario('sc1', { target: botao } as any);
+
+    expect(component.idSequenciaComentarioAtual).to.be.undefined;
+  });
+
+  it('Deveria navegar para proxima sequencia com seta para baixo', () => {
+    const component = new LexmlEmendaComponent() as any;
+    component.sequenciasComentario = [criarSequenciaComentarioComId('sc1', criarComentario('Primeiro')), criarSequenciaComentarioComId('sc2', criarComentario('Segundo'))];
+    let preventDefaultChamado = false;
+    let abaAberta = '';
+    Object.defineProperty(component, '_tabsEsquerda', {
+      value: {
+        show: (aba: string): void => {
+          abaAberta = aba;
+        },
+      },
+      configurable: true,
+    });
+
+    component.navegarSequenciaComentarioPorTeclado(
+      {
+        key: 'ArrowDown',
+        preventDefault: (): void => {
+          preventDefaultChamado = true;
+        },
+        target: document.createElement('article'),
+      } as any,
+      'sc1'
+    );
+
+    expect(preventDefaultChamado).to.be.true;
+    expect(component.idSequenciaComentarioAtual).to.equal('sc2');
+    expect(abaAberta).to.equal('justificativa');
+  });
+
+  it('Deveria navegar para sequencia anterior com seta para cima', () => {
+    const component = new LexmlEmendaComponent() as any;
+    component.sequenciasComentario = [criarSequenciaComentarioComId('sc1', criarComentario('Primeiro')), criarSequenciaComentarioComId('sc2', criarComentario('Segundo'))];
+    let preventDefaultChamado = false;
+
+    component.navegarSequenciaComentarioPorTeclado(
+      {
+        key: 'ArrowUp',
+        preventDefault: (): void => {
+          preventDefaultChamado = true;
+        },
+        target: document.createElement('article'),
+      } as any,
+      'sc2'
+    );
+
+    expect(preventDefaultChamado).to.be.true;
+    expect(component.idSequenciaComentarioAtual).to.equal('sc1');
+  });
+
   it('Deveria abrir modal de confirmação para excluir comentário do usuário', () => {
     const component = new LexmlEmendaComponent() as any;
     component.sequenciasComentario = [criarSequenciaComentario(criarComentario('Texto original'), criarComentario('Resposta original'))];
