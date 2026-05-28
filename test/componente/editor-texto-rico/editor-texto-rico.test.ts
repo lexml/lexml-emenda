@@ -112,6 +112,18 @@ describe('Testando lexml-emenda-editor-texto-rico (EditorTextoRicoComponent)', (
     expect(eventDetail?.range?.length).to.be.equal(5);
   });
 
+  it('Deveria emitir evento para abrir a lista de comentarios pelo botao mobile', () => {
+    const botaoListaComentarios = editorTextoRico.querySelector('.comentarios-mobile-button') as HTMLButtonElement;
+    let eventDetail: any;
+    editorTextoRico.addEventListener('abrir-modal-lista-comentarios', (ev: Event) => {
+      eventDetail = (ev as CustomEvent).detail;
+    });
+
+    expect(botaoListaComentarios).to.not.be.null;
+    botaoListaComentarios.click();
+    expect(eventDetail?.modo).to.equal(editorTextoRico.modo);
+  });
+
   it('Deveria marcar a seleção com tag de comentário', () => {
     editorTextoRico.setContent('<p>Texto para comentário.</p>');
     editorTextoRico.quill?.setSelection(0, 5);

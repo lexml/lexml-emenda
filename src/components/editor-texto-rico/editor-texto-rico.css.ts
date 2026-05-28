@@ -159,6 +159,38 @@ export const editorTextoRicoCss = html`
       color: #9ca3af;
     }
 
+    .comentarios-mobile-toolbar {
+      display: none !important;
+      float: right;
+      width: auto !important;
+    }
+
+    .comentarios-mobile-button {
+      align-items: center;
+      cursor: pointer;
+      display: inline-flex;
+      font-family: Arial var(--eta-font-sans);
+      font-size: 0.875rem;
+      gap: 4px;
+      margin: 0px 8px 4px;
+      width: auto !important;
+    }
+
+    .comentarios-mobile-button:hover {
+      background-color: var(--sl-color-neutral-100);
+      border-color: var(--sl-color-neutral-300);
+    }
+    .comentarios-mobile-field_button {
+      display: flex;
+    }
+    .comentarios-mobile-button__icone {
+      display: inline-flex;
+      align-items: center;
+      font-size: 16px;
+      margin-right: 5px;
+      margin-top: 3px;
+    }
+
     .ql-picker.ql-estilo .ql-picker-label {
       width: 160px;
     }
@@ -410,6 +442,12 @@ export const editorTextoRicoCss = html`
       }
     }
 
+    @media (max-width: 992px) {
+      .comentarios-mobile-toolbar {
+        display: inline-block !important;
+      }
+    }
+
     @media (max-width: 768px) {
       .mobile-buttons {
         display: inline-block !important;
@@ -419,6 +457,12 @@ export const editorTextoRicoCss = html`
       }
       .ql-snow .ql-editor img {
         max-width: 100%;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .comentarios-mobile-button span:not(.comentarios-mobile-button__icone) {
+        display: none;
       }
     }
   </style>

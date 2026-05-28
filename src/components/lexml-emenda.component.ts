@@ -227,6 +227,9 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
   @query('#lexml-emenda-excluir-comentario-modal')
   private excluirComentarioModal!: any;
 
+  @query('#lexml-emenda-lista-comentarios-modal')
+  private listaComentariosModal!: any;
+
   private editorComentarioAtual?: any;
   private rangeComentarioAtual?: any;
   private modoComentarioAtual = '';
@@ -697,6 +700,7 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
   }
 
   private MOBILE_WIDTH = 768;
+  private TABLET_WIDTH = 992;
   private splitPanelPosition = 67;
   private sizeMode = '';
 
@@ -1415,6 +1419,11 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
           width: min(440px, calc(100vw - 32px));
         }
 
+        .comentario-dialog--lista::part(panel) {
+          width: min(430px, calc(100vw - 24px));
+          max-height: calc(100vh - 32px);
+        }
+
         .comentario-dialog::part(header) {
           padding: 5px 24px 10px;
           align-items: center;
@@ -1454,9 +1463,32 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
           padding: 12px 24px 20px;
         }
 
+        .comentario-dialog--lista::part(body) {
+          padding: 0;
+          overflow: hidden;
+        }
+
         .comentario-dialog::part(footer) {
           border-top: 1px solid var(--sl-color-neutral-200);
           padding: 16px 24px 20px;
+        }
+
+        .comentario-dialog--lista .comentarios {
+          max-height: min(68vh, 680px);
+          overflow-y: auto;
+          padding: 12px;
+        }
+
+        .comentario-dialog__titulo-lista {
+          align-items: center;
+          display: inline-flex;
+          gap: 8px;
+        }
+
+        .comentario-dialog__titulo-lista sl-icon {
+          color: #111827;
+          font-size: 1rem;
+          transform: translateY(1px);
         }
 
         .comentario-modal__campo,
@@ -1639,6 +1671,7 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
                 registroEvento="justificativa"
                 @onchange=${this.onChange}
                 @abrir-modal-comentario=${this.abrirModalAdicionarComentario}
+                @abrir-modal-lista-comentarios=${this.abrirModalListaComentarios}
                 @comentario-selecionado=${this.atualizarComentarioAtual}
               ></lexml-emenda-editor-texto-rico>
               <lexml-emenda-substituicao-termo style="display: ${this.isEmendaSubstituicaoTermo() ? 'block' : 'none'}" @onchange=${this.onChange}></lexml-emenda-substituicao-termo>
@@ -1651,6 +1684,7 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
                 registroEvento="justificativa"
                 @onchange=${this.onChange}
                 @abrir-modal-comentario=${this.abrirModalAdicionarComentario}
+                @abrir-modal-lista-comentarios=${this.abrirModalListaComentarios}
                 @comentario-selecionado=${this.atualizarComentarioAtual}
               ></lexml-emenda-editor-texto-rico>
             </sl-tab-panel>
@@ -1734,7 +1768,7 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
           </sl-tab-group>
         </div>
       </sl-split-panel>
-      ${this.renderModalComentario()} ${this.renderModalExcluirSequenciaComentario()} ${this.renderModalExcluirComentario()}
+      ${this.renderModalComentario()} ${this.renderModalListaComentarios()} ${this.renderModalExcluirSequenciaComentario()} ${this.renderModalExcluirComentario()}
     `;
   }
 
@@ -1867,6 +1901,7 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
     this._tabsEsquerda?.show(this.getNomeAbaComentario(sequenciaComentario.local));
     this.rolarParaComentarioAtual();
     this.posicionarCursorNoComentario(sequenciaComentario, manterFocoNoCard);
+    this.fecharModalListaComentarios();
   }
 
   private navegarSequenciaComentarioPorTeclado(event: KeyboardEvent, idSequenciaComentario: string): void {
@@ -2070,6 +2105,21 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
     `;
   }
 
+  private renderModalListaComentarios(): TemplateResult {
+    return html`
+      <sl-dialog id="lexml-emenda-lista-comentarios-modal" class="comentario-dialog comentario-dialog--lista" label="Comentários">
+        <span slot="label" class="comentario-dialog__titulo-lista">
+          <sl-icon name="chat-left-text" aria-hidden="true"></sl-icon>
+          <span>Comentários</span>
+        </span>
+        ${this.renderComentariosEstaticos()}
+        <div slot="footer" class="comentario-dialog__footer">
+          <sl-button variant="primary" @click=${this.fecharModalListaComentarios}>Fechar</sl-button>
+        </div>
+      </sl-dialog>
+    `;
+  }
+
   private renderModalExcluirSequenciaComentario(): TemplateResult {
     return html`
       <sl-dialog id="lexml-emenda-excluir-sequencia-comentario-modal" class="comentario-dialog comentario-dialog--confirmacao" label="Confirmar exclusão">
@@ -2114,6 +2164,19 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
         </div>
       </sl-dialog>
     `;
+  }
+
+  private abrirModalListaComentarios = (): void => {
+    this.listaComentariosModal?.show();
+    this.rolarParaComentarioAtual();
+  };
+
+  private fecharModalListaComentarios = (): void => {
+    this.listaComentariosModal?.hide();
+  };
+
+  private isModoMobileOuTablet(): boolean {
+    return window.innerWidth <= this.TABLET_WIDTH;
   }
 
   private abrirModalAdicionarComentario = (event?: CustomEvent): void => {
@@ -2268,6 +2331,9 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
 
     this.sequenciasComentario = [...this.sequenciasComentario, sequenciaComentario];
     this._tabsDireita?.show('comentarios');
+    if (this.isModoMobileOuTablet()) {
+      this.abrirModalListaComentarios();
+    }
   }
 
   private responderComentarioSelecionado(): void {

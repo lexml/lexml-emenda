@@ -187,6 +187,14 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
           <sl-icon name="x"></sl-icon>
         </sl-button>
       </div>
+      <div class="comentarios-mobile-toolbar">
+        <button type="button" class="comentarios-mobile-button" title="Comentários" @click=${this.abrirModalListaComentarios}>
+          <div class="comentarios-mobile-field_button">
+            <sl-icon name="chat-left-text" class="comentarios-mobile-button__icone"></sl-icon>
+            <span>Comentários</span>
+          </div>
+        </button>
+      </div>
       <div id="${this.id}-inner" class="lexml-emenda-editor-texto-rico" data-modo="${this.modo}" @onTableInTable=${this.onTableInTable}></div>
       <lexml-emenda-alterar-largura-tabela-coluna-modal id="lexml-alterar-largura-tabela-modal" tipo="tabela"></lexml-emenda-alterar-largura-tabela-coluna-modal>
       <lexml-emenda-alterar-largura-tabela-coluna-modal id="lexml-alterar-largura-coluna-modal" tipo="coluna"></lexml-emenda-alterar-largura-tabela-coluna-modal>
@@ -540,6 +548,18 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
     );
   };
 
+  private abrirModalListaComentarios = (): void => {
+    this.dispatchEvent(
+      new CustomEvent('abrir-modal-lista-comentarios', {
+        bubbles: true,
+        composed: true,
+        detail: {
+          modo: this.modo,
+        },
+      })
+    );
+  };
+
   public adicionarComentario(idSequenciaComentario: string, range?: any): boolean {
     const rangeComentario = range || this.quill?.getSelection();
     const comentarioAdicionado = (this.quill as any)?.comentarios?.adicionar(idSequenciaComentario, rangeComentario);
@@ -798,6 +818,7 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
     const toolbarContainer = this.quill!.getModule('toolbar').container;
     const elAnexo = this.querySelector('.panel-anexo');
     const elRevisao = this.querySelector('.panel-revisao')!;
+    const elComentariosMobile = this.querySelector('.comentarios-mobile-toolbar');
 
     if (elAnexo) {
       elAnexo.parentNode!.removeChild(elAnexo);
@@ -806,6 +827,11 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
 
     elRevisao.parentNode!.removeChild(elRevisao);
     toolbarContainer.appendChild(elRevisao);
+
+    if (elComentariosMobile) {
+      elComentariosMobile.parentNode!.removeChild(elComentariosMobile);
+      toolbarContainer.appendChild(elComentariosMobile);
+    }
   };
 
   configureTooltip = (): void => {

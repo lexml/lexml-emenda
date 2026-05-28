@@ -244,6 +244,24 @@ describe('LexmlEmendaComponent - comentários', () => {
     expect(component.idSequenciaComentarioAtual).to.be.undefined;
   });
 
+  it('Deveria abrir modal responsiva da lista de comentarios', () => {
+    const component = new LexmlEmendaComponent() as any;
+    let modalAberto = false;
+    Object.defineProperty(component, 'listaComentariosModal', {
+      value: {
+        show: (): void => {
+          modalAberto = true;
+        },
+      },
+      configurable: true,
+    });
+    component.rolarParaComentarioAtual = (): void => undefined;
+
+    component.abrirModalListaComentarios();
+
+    expect(modalAberto).to.be.true;
+  });
+
   it('Deveria selecionar sequencia clicada, abrir justificativa e posicionar cursor no comentario', async () => {
     const component = new LexmlEmendaComponent() as any;
     component.sequenciasComentario = [criarSequenciaComentarioComId('sc1', criarComentario('Texto original'))];
