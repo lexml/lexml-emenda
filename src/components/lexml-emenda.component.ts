@@ -451,6 +451,7 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
       if (this.isEmendaTextoLivre() && this._lexmlEmendaTextoRico.isEditorVazio()) {
         this.showAlertaEmendaTextoLivre();
       }
+      this.atualizarAlertaGlobalComentarios();
       setTimeout(this.handleResize, 0);
 
       if (!params.emenda?.revisoes?.length) {
@@ -523,6 +524,7 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
     if (this.isEmendaTextoLivre() && this._lexmlEmendaTextoRico.isEditorVazio()) {
       this.showAlertaEmendaTextoLivre();
     }
+    this.atualizarAlertaGlobalComentarios();
     setTimeout(this.handleResize, 0);
 
     this._tabsEsquerda.show('lexml-emenda-eta');
@@ -895,6 +897,7 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
     }
 
     this.sincronizarSequenciasComentarioComTexto();
+    this.atualizarAlertaGlobalComentarios();
 
     if (this.sequenciasComentario.length) {
       this.requestUpdate();
@@ -931,6 +934,24 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
 
   limparAlertas(): void {
     rootStore.dispatch(limparAlertas());
+  }
+
+  private atualizarAlertaGlobalComentarios(): void {
+    const id = 'alerta-global-comentarios';
+
+    if (this.sequenciasComentario.length) {
+      rootStore.dispatch(
+        adicionarAlerta({
+          id,
+          tipo: TipoMensagem.INFO,
+          mensagem: 'Este documento contém comentários e não deve ser protocolado até que sejam removidos.',
+          podeFechar: true,
+          exibirComandoEmenda: true,
+        })
+      );
+    } else if (rootStore.getState().elementoReducer.ui?.alertas?.some(alerta => alerta.id === id)) {
+      rootStore.dispatch(removerAlerta(id));
+    }
   }
 
   showAlertaEmendaTextoLivre(): void {
@@ -2330,6 +2351,7 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
     }
 
     this.sequenciasComentario = [...this.sequenciasComentario, sequenciaComentario];
+    this.atualizarAlertaGlobalComentarios();
     this._tabsDireita?.show('comentarios');
     if (this.isModoMobileOuTablet()) {
       this.abrirModalListaComentarios();
@@ -2354,6 +2376,7 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
 
       return Object.assign(new SequenciaComentario(), seq, { comentarios: [...seq.comentarios, resposta] });
     });
+    this.atualizarAlertaGlobalComentarios();
   }
 
   private excluirComentario(idSequenciaComentario: string, indexComentario: number): void {
@@ -2373,6 +2396,7 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
     if (this.comentarioEdicaoAtual?.idSequenciaComentario === idSequenciaComentario) {
       this.comentarioEdicaoAtual = undefined;
     }
+    this.atualizarAlertaGlobalComentarios();
   }
 
   private podeExcluirComentario(idSequenciaComentario: string, indexComentario: number): boolean {
@@ -2394,6 +2418,7 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
     this.getEditorTextoRicoByLocalComentario(sequenciaComentario.local)?.removerComentario?.(idSequenciaComentario);
     this.sequenciasComentario = this.sequenciasComentario.filter(seq => seq.id !== idSequenciaComentario);
     this.limparEstadoSequenciaComentario(idSequenciaComentario);
+    this.atualizarAlertaGlobalComentarios();
   }
 
   private sincronizarSequenciasComentarioComTexto(): void {
@@ -2417,6 +2442,7 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
     if (idsRemovidos.length) {
       this.sequenciasComentario = sequenciasComentario;
       idsRemovidos.forEach(idSequenciaComentario => this.limparEstadoSequenciaComentario(idSequenciaComentario));
+      this.atualizarAlertaGlobalComentarios();
     }
   }
 
@@ -2454,6 +2480,7 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
       const comentarios = seq.comentarios.map((comentario, index) => (index === indexComentario ? comentarioAtualizado : comentario));
       return Object.assign(new SequenciaComentario(), seq, { comentarios });
     });
+    this.atualizarAlertaGlobalComentarios();
   }
 
   private getComentarioPorSequenciaEIndice(idSequenciaComentario: string, indexComentario: number): Comentario | undefined {
