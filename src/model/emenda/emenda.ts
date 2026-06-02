@@ -186,6 +186,7 @@ export enum TipoLocalComentario {
 
 export class SequenciaComentario {
   id = '';
+  idDispositivo?: string; // ID do dispositivo ao qual o comentário se refere
   local: TipoLocalComentario = TipoLocalComentario.JUSTIFICACAO;
   comentarios: Comentario[] = [];
 }
