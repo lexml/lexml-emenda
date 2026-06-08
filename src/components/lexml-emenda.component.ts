@@ -2415,6 +2415,7 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
       return;
     }
 
+    this.registrarSequenciaComentarioRemovida(sequenciaComentario);
     this.getEditorTextoRicoByLocalComentario(sequenciaComentario.local)?.removerComentario?.(idSequenciaComentario);
     this.sequenciasComentario = this.sequenciasComentario.filter(seq => seq.id !== idSequenciaComentario);
     this.limparEstadoSequenciaComentario(idSequenciaComentario);
@@ -2433,6 +2434,7 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
 
       if (possuiComentario === false) {
         idsRemovidos.push(seq.id);
+        this.registrarSequenciaComentarioRemovida(seq);
         return false;
       }
 
@@ -2444,6 +2446,14 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
       idsRemovidos.forEach(idSequenciaComentario => this.limparEstadoSequenciaComentario(idSequenciaComentario));
       this.atualizarAlertaGlobalComentarios();
     }
+  }
+
+  private registrarSequenciaComentarioRemovida(sequenciaComentario: SequenciaComentario): void {
+    if (!sequenciaComentario.id) {
+      return;
+    }
+
+    this.getEditorTextoRicoByLocalComentario(sequenciaComentario.local)?.registrarComentarioRemovido?.(sequenciaComentario.id);
   }
 
   private limparEstadoSequenciaComentario(idSequenciaComentario: string): void {

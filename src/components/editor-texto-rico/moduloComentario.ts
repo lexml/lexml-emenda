@@ -113,6 +113,17 @@ class ModuloComentario extends Module {
     return ranges.length > 0;
   }
 
+  removerPorIds(idsSequenciasComentario: string[] = []): boolean {
+    const ids = new Set(idsSequenciasComentario.filter(Boolean));
+    if (!ids.size) {
+      return false;
+    }
+
+    const ranges = this.getRangesComentariosPorIds(ids);
+    ranges.forEach(range => this.quill.formatText(range.index, range.length, COMENTARIO_FORMAT, false, Quill.sources.SILENT));
+    return ranges.length > 0;
+  }
+
   existe(idSequenciaComentario: string): boolean {
     if (!idSequenciaComentario) {
       return false;
@@ -153,6 +164,28 @@ class ModuloComentario extends Module {
     this.quill.getContents().ops.forEach((op: any) => {
       const length = this.getOpLength(op);
       if (op.attributes?.[COMENTARIO_FORMAT] === idSequenciaComentario) {
+        const rangeAnterior = ranges[ranges.length - 1];
+        if (rangeAnterior && rangeAnterior.index + rangeAnterior.length === index) {
+          rangeAnterior.length += length;
+        } else {
+          ranges.push({ index, length });
+        }
+      }
+
+      index += length;
+    });
+
+    return ranges;
+  }
+
+  private getRangesComentariosPorIds(idsSequenciasComentario: Set<string>): { index: number; length: number }[] {
+    const ranges: { index: number; length: number }[] = [];
+    let index = 0;
+
+    this.quill.getContents().ops.forEach((op: any) => {
+      const length = this.getOpLength(op);
+      const idSequenciaComentario = op.attributes?.[COMENTARIO_FORMAT];
+      if (idSequenciaComentario && idsSequenciasComentario.has(idSequenciaComentario)) {
         const rangeAnterior = ranges[ranges.length - 1];
         if (rangeAnterior && rangeAnterior.index + rangeAnterior.length === index) {
           rangeAnterior.length += length;

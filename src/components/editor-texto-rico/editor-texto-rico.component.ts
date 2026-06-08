@@ -59,6 +59,7 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
 
   onChange: Observable<string> = new Observable<string>();
   private timerOnChange?: any;
+  private idsSequenciasComentarioRemovidas = new Set<string>();
 
   quill?: Quill;
 
@@ -562,6 +563,7 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
 
   public adicionarComentario(idSequenciaComentario: string, range?: any): boolean {
     const rangeComentario = range || this.quill?.getSelection();
+    this.removerComentarioRemovido(idSequenciaComentario);
     const comentarioAdicionado = (this.quill as any)?.comentarios?.adicionar(idSequenciaComentario, rangeComentario);
     this.atualizaEstadoBotaoComentario(this.quill?.getSelection());
     return !!comentarioAdicionado;
@@ -575,6 +577,22 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
     const comentarioRemovido = (this.quill as any)?.comentarios?.remover(idSequenciaComentario);
     this.atualizaEstadoBotaoComentario(this.quill?.getSelection());
     return !!comentarioRemovido;
+  }
+
+  public registrarComentarioRemovido(idSequenciaComentario: string): void {
+    if (idSequenciaComentario) {
+      this.idsSequenciasComentarioRemovidas.add(idSequenciaComentario);
+    }
+  }
+
+  private removerComentarioRemovido(idSequenciaComentario: string): void {
+    if (idSequenciaComentario) {
+      this.idsSequenciasComentarioRemovidas.delete(idSequenciaComentario);
+    }
+  }
+
+  private removerFormatacaoComentariosPorIds(idsSequenciasComentario: string[] = []): boolean {
+    return !!(this.quill as any)?.comentarios?.removerPorIds(idsSequenciasComentario);
   }
 
   public possuiComentario(idSequenciaComentario: string): boolean | undefined {
@@ -869,6 +887,7 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
     this;
 
     this.texto = texto;
+    this.idsSequenciasComentarioRemovidas.clear();
 
     const textoAjustado = (texto || '')
       .replace(/align-justify/g, 'ql-align-justify')
@@ -919,6 +938,7 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
   };
 
   updateTexto = (): void => {
+    this.removerFormatacaoComentariosPorIds([...this.idsSequenciasComentarioRemovidas]);
     this.atualizaAtributosRevisaoTextoRico();
     const texto = this.ajustaHtml(this.quill?.root.innerHTML);
     this.texto = texto === '<p><br></p>' ? '' : texto;
