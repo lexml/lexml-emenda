@@ -177,10 +177,12 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
   private comentarioModalPossuiTexto = false;
 
   @state()
-  private ordenacaoComentarios: 'recentes' | 'texto' = 'recentes';
+  private ordenacaoComentarios: 'recentes' | 'texto' = 'texto';
 
   @state()
   private idSequenciaComentarioAtual?: string;
+
+  private preservarComentarioNaTrocaAba = false;
 
   @state()
   autoria = new Autoria();
@@ -747,6 +749,12 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
 
     this._tabsEsquerda?.addEventListener('sl-tab-show', (event: any) => {
       const tabName = event.detail.name;
+      if (this.preservarComentarioNaTrocaAba) {
+        return;
+      }
+
+      this.limparComentarioAtual();
+
       if (tabName === 'avisos') {
         const badge = (event.target as Element).querySelector('sl-badge');
         if (badge) {
@@ -782,6 +790,8 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
         localStorage.setItem('naoPulsarBadgeAtalhos', 'true');
       } else if (tabName === 'comentarios') {
         this.rolarParaComentarioAtual();
+      } else {
+        this.limparComentarioAtual();
       }
     });
   }
@@ -1213,13 +1223,20 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
           border: 1px solid #d9dee8;
           border-radius: 8px;
           background: white;
+          box-sizing: border-box;
           box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
           padding: 14px;
         }
 
         .comentario-sequencia--selecionada {
-          border-color: #93c5fd;
-          box-shadow: 0 0 0 2px #dbeafe, 0 1px 2px rgba(15, 23, 42, 0.08);
+          border: 2px solid #93c5fd;
+          background: #fbfdff;
+          box-shadow: 0 0 0 3px #eaf4ff, 0 1px 2px rgba(15, 23, 42, 0.08);
+        }
+
+        .comentario-sequencia:focus-visible {
+          outline: 0;
+          background: #f5fbff;
         }
 
         .comentario-sequencia__topo {
@@ -1819,8 +1836,8 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
           <label class="comentarios__ordenacao-container">
             Ordenar
             <select class="comentarios__ordenacao" aria-label="Ordenação dos comentários" .value=${this.ordenacaoComentarios} @change=${this.alterarOrdenacaoComentarios}>
-              <option value="recentes">Recentes</option>
               <option value="texto">Ordem no texto</option>
+              <option value="recentes">Recentes</option>
             </select>
           </label>
         </div>
@@ -1865,6 +1882,18 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
       const card = this.querySelector(`[data-id-sequencia-comentario="${this.idSequenciaComentarioAtual}"]`) as HTMLElement | null;
       card?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
+  }
+
+  private limparComentarioAtual(): void {
+    if (!this.idSequenciaComentarioAtual) {
+      this._lexmlJustificativa?.limparDestaqueComentarioSelecionado?.(false);
+      this._lexmlEmendaTextoRico?.limparDestaqueComentarioSelecionado?.(false);
+      return;
+    }
+
+    this.idSequenciaComentarioAtual = undefined;
+    this._lexmlJustificativa?.limparDestaqueComentarioSelecionado?.(false);
+    this._lexmlEmendaTextoRico?.limparDestaqueComentarioSelecionado?.(false);
   }
 
   private getSequenciasComentarioOrdenadas(): SequenciaComentario[] {
@@ -1919,7 +1948,11 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
 
     this.idSequenciaComentarioAtual = idSequenciaComentario;
     (event?.currentTarget as HTMLElement | undefined)?.focus?.();
+    this.preservarComentarioNaTrocaAba = true;
     this._tabsEsquerda?.show(this.getNomeAbaComentario(sequenciaComentario.local));
+    setTimeout(() => {
+      this.preservarComentarioNaTrocaAba = false;
+    }, 0);
     this.rolarParaComentarioAtual();
     this.posicionarCursorNoComentario(sequenciaComentario, manterFocoNoCard);
     this.fecharModalListaComentarios();

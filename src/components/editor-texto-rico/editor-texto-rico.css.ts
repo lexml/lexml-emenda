@@ -314,6 +314,8 @@ export const editorTextoRicoCss = html`
 
     .lexml-emenda-editor-texto-rico .ql-editor comentario.comentario-selecionado {
       background-color: #fdd663;
+      border-radius: 2px;
+      box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.28);
     }
 
     .lexml-emenda-editor-texto-rico .ql-editor comentario del {
@@ -330,6 +332,8 @@ export const editorTextoRicoCss = html`
 
     .lexml-emenda-editor-texto-rico .ql-editor del comentario.comentario-selecionado {
       background-color: #fdd663;
+      border-radius: 2px;
+      box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.28);
     }
 
     .lexml-emenda-editor-texto-rico:not([data-modo='justificativa']):not([data-modo='textoLivre']) .ql-editor ins {

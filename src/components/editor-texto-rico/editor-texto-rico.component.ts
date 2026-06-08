@@ -265,10 +265,10 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
       Quill.register('formats/text-indent', NoIndentClass, true);
       Quill.register('formats/margin-bottom', MarginBottomClass, true);
 
-      const customToolbarOptions = [...toolbarOptions];
+      const customToolbarOptions = toolbarOptions.map(options => [...options]);
       const customFormatsOptions = [...formatsOptions];
       if (this.modo === Modo.JUSTIFICATIVA) {
-        customToolbarOptions.push(['lexml-emenda-nota-rodape']);
+        customToolbarOptions.splice(customToolbarOptions.length - 1, 0, ['lexml-emenda-nota-rodape']);
         customToolbarOptions[1] = ['bold', 'italic', 'underline', 'link'];
         customFormatsOptions.push('lexml-emenda-nota-rodape');
         customFormatsOptions.push('link');
@@ -661,11 +661,12 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
     }
 
     if (!range) {
+      this.limparDestaqueComentarioSelecionado();
       return;
     }
 
     const root = this.quill.root as HTMLElement;
-    root.querySelectorAll('comentario.comentario-selecionado').forEach(el => el.classList.remove('comentario-selecionado'));
+    this.limparDestaqueComentarioSelecionado(false);
 
     const elComentario = this.getElementoComentarioNoRange(range);
     if (!elComentario) {
@@ -686,6 +687,14 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
       }
     });
     this.dispatchEventComentarioSelecionado(idSequenciaComentario);
+  }
+
+  public limparDestaqueComentarioSelecionado(dispatchEvent = true): void {
+    const root = this.quill?.root as HTMLElement | undefined;
+    root?.querySelectorAll('comentario.comentario-selecionado').forEach(el => el.classList.remove('comentario-selecionado'));
+    if (dispatchEvent) {
+      this.dispatchEventComentarioSelecionado(undefined);
+    }
   }
 
   private destacarComentarioPorId(idSequenciaComentario: string): boolean {
@@ -1194,6 +1203,6 @@ const toolbarOptions = [
       ],
     },
   ],
-  ['lexml-emenda-comentario'],
   ['image'],
+  ['lexml-emenda-comentario'],
 ];
