@@ -11,6 +11,7 @@ import { rootStore } from '../redux/store';
 export class ArticulacaoComponent extends connect(rootStore)(LitElement) {
   @property({ type: Array }) elementos: Elemento[] = [];
   @property({ type: Object }) lexmlEtaConfig: LexmlEmendaConfig = new LexmlEmendaConfig();
+  @property({ type: Array }) idsDispositivosComentados: string[] = [];
 
   constructor() {
     super();
@@ -36,7 +37,7 @@ export class ArticulacaoComponent extends connect(rootStore)(LitElement) {
           box-shadow: none;
         }
       </style>
-      <lexml-eta-editor .lexmlEtaConfig=${this.lexmlEtaConfig}></lexml-eta-editor>
+      <lexml-eta-editor .lexmlEtaConfig=${this.lexmlEtaConfig} .idsDispositivosComentados=${this.idsDispositivosComentados}></lexml-eta-editor>
     `;
   }
 }

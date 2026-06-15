@@ -16,6 +16,7 @@ import { EtaBlotMenuConteudo } from './eta-blot-menu-conteudo';
 import { EtaBlotMenuItem } from './eta-blot-menu-item';
 import { EtaBlotNotaAlteracao } from './eta-blot-nota-alteracao';
 import { EtaBlotOpcoesDiff } from './eta-blot-opcoes-diff';
+import { EtaBlotOpcoesComentario } from './eta-blot-opcoes-comentario';
 import { EtaBlotRevisao } from './eta-blot-revisao';
 import { EtaBlotRevisaoAceitar } from './eta-blot-revisao-aceitar';
 import { EtaBlotRevisaoRecusar } from './eta-blot-revisao-recusar';
@@ -158,6 +159,7 @@ export class EtaQuill extends Quill {
     EtaQuill.register(EtaBlotRevisaoRecusar, true);
     EtaQuill.register(EtaContainerOpcoes, true);
     EtaQuill.register(EtaBlotOpcoesDiff, true);
+    EtaQuill.register(EtaBlotOpcoesComentario, true);
     EtaQuill.register(id, true);
     EtaQuill.register(paddingLeft, true);
     EtaQuill.register(border, true);
@@ -184,7 +186,7 @@ export class EtaQuill extends Quill {
   customClickHandler = (ev: MouseEvent): void => {
     try {
       let blot = EtaQuill.find(ev.target as HTMLElement);
-      if (['EtaBlotOpcoesDiff'].includes(blot.instanceBlotName)) {
+      if (['EtaBlotOpcoesDiff', 'EtaBlotOpcoesComentario'].includes(blot.instanceBlotName)) {
         return;
       }
       while (blot && blot.instanceBlotName !== 'EtaContainerTable') {

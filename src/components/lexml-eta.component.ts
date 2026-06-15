@@ -24,6 +24,7 @@ import { EditorComponent } from './editor/editor.component';
 @customElement('lexml-emenda-eta')
 export class LexmlEtaComponent extends connect(rootStore)(LitElement) {
   @property({ type: Object }) lexmlEtaConfig: LexmlEmendaConfig = new LexmlEmendaConfig();
+  @property({ type: Array }) idsDispositivosComentados: string[] = [];
 
   @query('lexml-eta-editor')
   private editorComponent!: EditorComponent;
@@ -87,6 +88,10 @@ export class LexmlEtaComponent extends connect(rootStore)(LitElement) {
     this.editorComponent.atualizaAnexo(anexos);
   }
 
+  selecionarDispositivoPorId(idDispositivo: string, uuid2Dispositivo?: string): boolean {
+    return this.editorComponent?.selecionarDispositivoPorId(idDispositivo, uuid2Dispositivo) ?? false;
+  }
+
   private loadProjetoNorma(preparaAberturaEmenda: boolean, params?: LexmlEmendaParametrosEdicao): void {
     let documento;
 
@@ -148,7 +153,7 @@ export class LexmlEtaComponent extends connect(rootStore)(LitElement) {
           box-shadow: none;
         }
       </style>
-      <lexml-emenda-articulacao .lexmlEtaConfig=${this.lexmlEtaConfig}></lexml-emenda-articulacao>
+      <lexml-emenda-articulacao .lexmlEtaConfig=${this.lexmlEtaConfig} .idsDispositivosComentados=${this.idsDispositivosComentados}></lexml-emenda-articulacao>
     `;
   }
 }

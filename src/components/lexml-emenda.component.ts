@@ -34,6 +34,8 @@ import {
 import { buildFakeUrn, getAno, getNumero, getSigla, getTipo } from '../model/lexml/documento/urnUtil';
 import { rootStore } from '../redux/store';
 import { ClassificacaoDocumento } from './../model/documento/classificacao';
+import { Dispositivo } from '../model/dispositivo/dispositivo';
+import { Elemento } from '../model/elemento';
 import { ProjetoNorma } from './../model/lexml/documento/projetoNorma';
 import { ComandoEmendaComponent } from './comandoEmenda/comandoEmenda.component';
 import { ComandoEmendaModalComponent } from './comandoEmenda/comandoEmenda.modal.component';
@@ -48,6 +50,9 @@ import { StateEvent, StateType } from '../redux/state';
 import { limparRevisaoAction } from '../model/lexml/acao/limparRevisoes';
 import { aplicarAlteracoesEmendaAction } from '../model/lexml/acao/aplicarAlteracoesEmenda';
 import { buildContent, getUrn } from '../model/lexml/documento/conversor/buildProjetoNormaFromJsonix';
+import { buscaDispositivoById, findDispositivoByUuid2 } from '../model/lexml/hierarquia/hierarquiaUtil';
+import { TipoDispositivo } from '../model/lexml/tipo/tipoDispositivo';
+import { createElemento, getElementos } from '../model/elemento/elementoUtil';
 import { generoFromLetra } from '../model/dispositivo/genero';
 import { Comissao } from './destino/comissao';
 import { SubstituicaoTermoComponent } from './substituicao-termo/substituicao-termo.component';
@@ -182,7 +187,12 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
   @state()
   private idSequenciaComentarioAtual?: string;
 
+  @state()
+  private modalListaComentariosAberto = false;
+
   private preservarComentarioNaTrocaAba = false;
+  private idsDispositivosComentadosCacheKey = '';
+  private idsDispositivosComentadosCache: string[] = [];
 
   @state()
   autoria = new Autoria();
@@ -234,6 +244,9 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
 
   private editorComentarioAtual?: any;
   private rangeComentarioAtual?: any;
+  private comentarioArticulacaoAtual?: { elemento: Elemento; idDispositivo: string };
+  private uuid2DispositivoPorSequenciaComentario = new Map<string, string>();
+  private timerSincronizacaoComentariosArticulacao?: number;
   private modoComentarioAtual = '';
   private acaoModalComentario: 'adicionar' | 'responder' | 'editar' = 'adicionar';
   private comentarioEdicaoAtual?: { idSequenciaComentario: string; indexComentario: number };
@@ -326,6 +339,8 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
       return new Emenda();
     }
 
+    this.sincronizarReferenciasComentariosArticulacao(true);
+
     const emenda = this.montarEmendaBasica();
     const numeroProposicao = emenda.proposicao.numero.replace(/^0+/, '');
     if (this.isEmendaSubstituicaoTermo()) {
@@ -345,7 +360,7 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
     }
     emenda.justificativa = this._lexmlJustificativa.texto;
     emenda.notasRodape = this._lexmlJustificativa.notasRodape;
-    emenda.sequenciasComentario = this.sequenciasComentario;
+    emenda.sequenciasComentario = this.normalizarSequenciasComentario(this.sequenciasComentario);
     emenda.autoria = this._lexmlAutoria.getAutoriaAtualizada();
     emenda.data = this._lexmlData.data || undefined;
     emenda.opcoesImpressao = this._lexmlOpcoesImpressao.opcoesImpressao;
@@ -582,11 +597,28 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
   }
 
   stateChanged(state: any): void {
-    const revisaoAtivada = state?.elementoReducer?.ui?.events?.some((ev: StateEvent) => ev.stateType === StateType.RevisaoAtivada);
-    const revisaoDesativada = state?.elementoReducer?.ui?.events?.some((ev: StateEvent) => ev.stateType === StateType.RevisaoDesativada);
+    const events = state?.elementoReducer?.ui?.events || [];
+    const revisaoAtivada = events.some((ev: StateEvent) => ev.stateType === StateType.RevisaoAtivada);
+    const revisaoDesativada = events.some((ev: StateEvent) => ev.stateType === StateType.RevisaoDesativada);
     revisaoAtivada && this.mostrarDialogDisclaimerRevisao();
     if (revisaoAtivada || revisaoDesativada) {
       this.emitiEventoOnRevisao(rootStore.getState().elementoReducer.emRevisao);
+    }
+
+    const eventosEstruturais = events.filter((ev: StateEvent) =>
+      [StateType.ElementoRenumerado, StateType.ElementoModificado, StateType.ElementoIncluido, StateType.ElementoRemovido].includes(ev.stateType)
+    );
+    if (eventosEstruturais.length) {
+      this.agendarSincronizacaoReferenciasComentariosArticulacao(eventosEstruturais.some((ev: StateEvent) => ev.stateType === StateType.ElementoRemovido));
+    }
+
+    if (events.some((ev: StateEvent) => [StateType.DocumentoCarregado, StateType.ArticulacaoAtualizada].includes(ev.stateType))) {
+      this.restaurarReferenciasComentariosArticulacao();
+    }
+
+    const eventoElementoSelecionado = events.filter((ev: StateEvent) => ev.stateType === StateType.ElementoSelecionado).slice(-1)[0];
+    if (eventoElementoSelecionado) {
+      this.sincronizarComentarioAtualComDispositivoSelecionado(eventoElementoSelecionado.elementos?.[0]);
     }
   }
 
@@ -627,8 +659,45 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
     rootStore.dispatch(atualizarUsuarioAction.execute(usuario));
   }
 
+  private normalizarSequenciasComentario(sequenciasComentario: SequenciaComentario[] = []): SequenciaComentario[] {
+    return sequenciasComentario.map(seq => {
+      const sequenciaComentario = Object.assign(new SequenciaComentario(), seq);
+      sequenciaComentario.comentarios = (seq.comentarios || []).map(comentario => {
+        const comentarioNormalizado = Object.assign(new Comentario(), comentario);
+        comentarioNormalizado.usuario = Object.assign(new Usuario(), comentario.usuario || {});
+        return comentarioNormalizado;
+      });
+      return sequenciaComentario;
+    });
+  }
+
+  private restaurarReferenciasComentariosArticulacao(): void {
+    let houveAtualizacao = false;
+
+    this.sequenciasComentario.forEach(seq => {
+      if (!this.isComentarioArticulacao(seq) || this.uuid2DispositivoPorSequenciaComentario.has(seq.id)) {
+        return;
+      }
+
+      const dispositivo = this.getDispositivoPorIdComentario(seq.idDispositivo);
+      if (dispositivo?.uuid2) {
+        this.uuid2DispositivoPorSequenciaComentario.set(seq.id, dispositivo.uuid2);
+        houveAtualizacao = true;
+      }
+    });
+
+    if (houveAtualizacao) {
+      this.idsDispositivosComentadosCacheKey = '';
+      this.idsDispositivosComentadosCache = [];
+      this.requestUpdate();
+    }
+  }
+
   private setEmenda(emenda: Emenda): void {
     rootStore.dispatch(limparAlertas());
+    this.uuid2DispositivoPorSequenciaComentario.clear();
+    this.idsDispositivosComentadosCacheKey = '';
+    this.idsDispositivosComentadosCache = [];
 
     if (!this.isEmendaTextoLivre() && !this.isEmendaSubstituicaoTermo()) {
       this._lexmlEta!.setDispositivosERevisoesEmenda(emenda.componentes[0].dispositivos, emenda.revisoes);
@@ -641,7 +710,8 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
     this._lexmlDestino!.colegiadoApreciador = emenda.colegiadoApreciador;
     this._lexmlDestino!.proposicao = emenda.proposicao;
     this.notasRodape = emenda.notasRodape || [];
-    this.sequenciasComentario = emenda.sequenciasComentario || [];
+    this.sequenciasComentario = this.normalizarSequenciasComentario(emenda.sequenciasComentario || []);
+    this.restaurarReferenciasComentariosArticulacao();
     this._lexmlJustificativa.setContent(emenda.justificativa, emenda.notasRodape);
 
     if (this.isEmendaTextoLivre()) {
@@ -906,6 +976,7 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
       this.buildAlertaJustificativa(comandoEmenda);
     }
 
+    this.sincronizarReferenciasComentariosArticulacao(true);
     this.sincronizarSequenciasComentarioComTexto();
     this.atualizarAlertaGlobalComentarios();
 
@@ -1700,7 +1771,10 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
                 style="display: ${!this.isEmendaTextoLivre() && !this.isEmendaSubstituicaoTermo() ? 'block' : 'none'}"
                 id="lexmlEta"
                 .lexmlEtaConfig=${this.lexmlEmendaConfig}
+                .idsDispositivosComentados=${this.getIdsDispositivosComentados()}
                 @onchange=${this.onChange}
+                @abrir-modal-comentario-articulacao=${this.abrirModalAdicionarComentarioArticulacao}
+                @selecionar-comentario-articulacao=${this.selecionarComentarioArticulacaoPorDispositivo}
               ></lexml-emenda-eta>
               <lexml-emenda-editor-texto-rico
                 style="display: ${this.isEmendaTextoLivre() ? 'block' : 'none'}"
@@ -1869,6 +1943,30 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
     }
   };
 
+  private sincronizarComentarioAtualComDispositivoSelecionado(elemento?: Elemento): void {
+    const sequenciaComentario =
+      elemento?.lexmlId && elemento.tipo !== TipoDispositivo.articulacao.tipo ? this.getSequenciaComentarioPorDispositivo(elemento.lexmlId, elemento.uuid2) : undefined;
+    const idAtual = sequenciaComentario?.id;
+
+    if (sequenciaComentario) {
+      this.atualizarIdDispositivoSequenciaComentario(sequenciaComentario);
+    }
+
+    if (this.idSequenciaComentarioAtual === idAtual) {
+      return;
+    }
+
+    if (!idAtual && !this.isComentarioArticulacao(this.sequenciasComentario.find(seq => seq.id === this.idSequenciaComentarioAtual))) {
+      return;
+    }
+
+    this.idSequenciaComentarioAtual = idAtual;
+
+    if (idAtual && this.isAbaComentariosAtiva()) {
+      this.rolarParaComentarioAtual();
+    }
+  }
+
   private isAbaComentariosAtiva(): boolean {
     return !!this.querySelector('sl-tab[panel="comentarios"][active], sl-tab-panel[name="comentarios"][active]');
   }
@@ -1878,9 +1976,16 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
       return;
     }
 
+    this.rolarParaSequenciaComentario(this.idSequenciaComentarioAtual);
+  }
+
+  private rolarParaSequenciaComentario(idSequenciaComentario: string): void {
     void this.updateComplete.then(() => {
-      const card = this.querySelector(`[data-id-sequencia-comentario="${this.idSequenciaComentarioAtual}"]`) as HTMLElement | null;
-      card?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      window.requestAnimationFrame(() => {
+        const cards = Array.from(this.querySelectorAll(`[data-id-sequencia-comentario="${idSequenciaComentario}"]`)) as HTMLElement[];
+        const cardVisivel = cards.find(card => card.offsetWidth > 0 || card.offsetHeight > 0 || card.getClientRects().length > 0);
+        (cardVisivel ?? cards[0])?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
     });
   }
 
@@ -1900,6 +2005,7 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
     const sequenciasComIndice = this.sequenciasComentario.map((seq, index) => ({ seq, index }));
 
     if (this.ordenacaoComentarios === 'texto') {
+      const posicoesSequenciasComentario = this.getPosicoesSequenciasComentario();
       return sequenciasComIndice
         .sort((a, b) => {
           const local = this.getOrdemLocalComentario(a.seq.local) - this.getOrdemLocalComentario(b.seq.local);
@@ -1907,7 +2013,9 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
             return local;
           }
 
-          const posicao = this.getPosicaoSequenciaComentario(a.seq) - this.getPosicaoSequenciaComentario(b.seq);
+          const posicaoA = posicoesSequenciasComentario.get(a.seq.id) ?? Number.MAX_SAFE_INTEGER;
+          const posicaoB = posicoesSequenciasComentario.get(b.seq.id) ?? Number.MAX_SAFE_INTEGER;
+          const posicao = posicaoA - posicaoB;
           return posicao !== 0 ? posicao : a.index - b.index;
         })
         .map(item => item.seq);
@@ -1925,7 +2033,32 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
     return local === TipoLocalComentario.TEXTO ? 0 : 1;
   }
 
-  private getPosicaoSequenciaComentario(seq: SequenciaComentario): number {
+  private getPosicoesSequenciasComentario(): Map<string, number> {
+    const posicoesDispositivosArticulacao = this.getPosicoesDispositivosArticulacao();
+    return new Map(this.sequenciasComentario.map(seq => [seq.id, this.getPosicaoSequenciaComentario(seq, posicoesDispositivosArticulacao)]));
+  }
+
+  private getPosicoesDispositivosArticulacao(): Map<string, number> {
+    const articulacao = rootStore.getState().elementoReducer.articulacao;
+    const elementos = articulacao ? getElementos(articulacao) : [];
+    const posicoes = new Map<string, number>();
+
+    elementos.forEach((elemento, index) => {
+      elemento.lexmlId && posicoes.set(elemento.lexmlId, index);
+      elemento.uuid2 && posicoes.set(elemento.uuid2, index);
+    });
+
+    return posicoes;
+  }
+
+  private getPosicaoSequenciaComentario(seq: SequenciaComentario, posicoesDispositivosArticulacao?: Map<string, number>): number {
+    if (this.isComentarioArticulacao(seq)) {
+      const posicoes = posicoesDispositivosArticulacao ?? this.getPosicoesDispositivosArticulacao();
+      const uuid2 = this.getUuid2DispositivoComentario(seq);
+      const posicao = uuid2 ? posicoes.get(uuid2) : posicoes.get(seq.idDispositivo!);
+      return typeof posicao === 'number' ? posicao : Number.MAX_SAFE_INTEGER;
+    }
+
     const posicao = this.getEditorTextoRicoByLocalComentario(seq.local)?.getIndiceComentario?.(seq.id);
     return typeof posicao === 'number' ? posicao : Number.MAX_SAFE_INTEGER;
   }
@@ -1986,6 +2119,19 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
 
   private posicionarCursorNoComentario(sequenciaComentario: SequenciaComentario, manterFocoNoCard = false): void {
     const idSequenciaComentario = sequenciaComentario.id;
+    if (this.isComentarioArticulacao(sequenciaComentario)) {
+      setTimeout(() => {
+        this._lexmlEta?.selecionarDispositivoPorId(sequenciaComentario.idDispositivo!, this.getUuid2DispositivoComentario(sequenciaComentario));
+        if (this.sequenciasComentario.some(seq => seq.id === idSequenciaComentario)) {
+          this.idSequenciaComentarioAtual = idSequenciaComentario;
+        }
+        if (manterFocoNoCard) {
+          this.focarCardSequenciaComentario(idSequenciaComentario);
+        }
+      }, 0);
+      return;
+    }
+
     setTimeout(() => {
       this.getEditorTextoRicoByLocalComentario(sequenciaComentario.local)?.posicionarCursorComentario?.(idSequenciaComentario);
       if (this.sequenciasComentario.some(seq => seq.id === idSequenciaComentario)) {
@@ -2095,9 +2241,244 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
   }
 
   private getTrechoComentario(seq: SequenciaComentario): string {
+    if (this.isComentarioArticulacao(seq)) {
+      return this.getIdentificacaoDispositivoComentario(seq.idDispositivo, undefined, seq);
+    }
+
     const editor = this.getEditorTextoRicoByLocalComentario(seq.local);
     const trecho = editor?.getTextoComentario?.(seq.id);
     return typeof trecho === 'string' && trecho.length > 0 ? trecho : 'Trecho comentado não localizado.';
+  }
+
+  private isComentarioArticulacao(seq?: SequenciaComentario): boolean {
+    return !!seq?.idDispositivo && seq.local === TipoLocalComentario.TEXTO;
+  }
+
+  private getIdsDispositivosComentados(): string[] {
+    const sequenciasArticulacao = this.sequenciasComentario.filter(seq => this.isComentarioArticulacao(seq));
+    const key = sequenciasArticulacao.map(seq => `${seq.id}:${seq.idDispositivo || ''}:${this.uuid2DispositivoPorSequenciaComentario.get(seq.id) || ''}`).join('|');
+    if (key === this.idsDispositivosComentadosCacheKey) {
+      return this.idsDispositivosComentadosCache;
+    }
+
+    const ids = new Set<string>();
+    sequenciasArticulacao.forEach(seq => {
+      const uuid2 = this.getUuid2DispositivoComentario(seq);
+      if (uuid2) {
+        ids.add(uuid2);
+      } else {
+        seq.idDispositivo && ids.add(seq.idDispositivo);
+      }
+    });
+
+    this.idsDispositivosComentadosCache = [...ids];
+    this.idsDispositivosComentadosCacheKey = sequenciasArticulacao
+      .map(seq => `${seq.id}:${seq.idDispositivo || ''}:${this.uuid2DispositivoPorSequenciaComentario.get(seq.id) || ''}`)
+      .join('|');
+    return this.idsDispositivosComentadosCache;
+  }
+
+  private getSequenciaComentarioPorDispositivo(idDispositivo: string, uuid2Dispositivo?: string): SequenciaComentario | undefined {
+    const sequenciasArticulacao = this.sequenciasComentario.filter(seq => this.isComentarioArticulacao(seq));
+
+    if (uuid2Dispositivo) {
+      const sequenciaPorUuid2 = sequenciasArticulacao.find(seq => this.getUuid2DispositivoComentario(seq) === uuid2Dispositivo);
+      if (sequenciaPorUuid2) {
+        return sequenciaPorUuid2;
+      }
+
+      return sequenciasArticulacao.find(seq => !this.uuid2DispositivoPorSequenciaComentario.has(seq.id) && seq.idDispositivo === idDispositivo);
+    }
+
+    return sequenciasArticulacao.find(seq => seq.idDispositivo === idDispositivo);
+  }
+
+  private selecionarComentarioArticulacaoPorDispositivo = (event: CustomEvent): void => {
+    const idDispositivo = event.detail?.idDispositivo;
+    const uuid2Dispositivo = event.detail?.uuid2Dispositivo;
+    const sequenciaComentario = idDispositivo || uuid2Dispositivo ? this.getSequenciaComentarioPorDispositivo(idDispositivo, uuid2Dispositivo) : undefined;
+    if (!sequenciaComentario) {
+      return;
+    }
+
+    this.atualizarIdDispositivoSequenciaComentario(sequenciaComentario);
+    this.idSequenciaComentarioAtual = sequenciaComentario.id;
+    this._tabsDireita?.show('comentarios');
+    this.rolarParaComentarioAtual();
+  };
+
+  private getIdentificacaoDispositivoComentario(idDispositivo?: string, elemento?: Elemento, sequenciaComentario?: SequenciaComentario): string {
+    const dispositivo = sequenciaComentario ? this.getDispositivoComentarioArticulacao(sequenciaComentario) : this.getDispositivoPorIdComentario(idDispositivo);
+    if (dispositivo) {
+      return this.formatarIdentificacaoDispositivo(dispositivo);
+    }
+
+    return this.formatarIdentificacaoElemento(elemento) || 'Dispositivo comentado';
+  }
+
+  private getDispositivoPorIdComentario(idDispositivo?: string): Dispositivo | undefined {
+    const articulacao = rootStore.getState().elementoReducer.articulacao;
+    const dispositivo = idDispositivo && articulacao ? buscaDispositivoById(articulacao, idDispositivo) : undefined;
+    return dispositivo && dispositivo.tipo !== TipoDispositivo.articulacao.tipo ? dispositivo : undefined;
+  }
+
+  private getDispositivoComentarioArticulacao(seq: SequenciaComentario): Dispositivo | undefined {
+    const articulacao = rootStore.getState().elementoReducer.articulacao;
+    if (!articulacao || !this.isComentarioArticulacao(seq)) {
+      return undefined;
+    }
+
+    const uuid2 = this.uuid2DispositivoPorSequenciaComentario.get(seq.id);
+    const dispositivoPorUuid2 = uuid2 ? (findDispositivoByUuid2(articulacao, uuid2) as Dispositivo | null) : null;
+    if (uuid2) {
+      return dispositivoPorUuid2 && dispositivoPorUuid2.tipo !== TipoDispositivo.articulacao.tipo ? dispositivoPorUuid2 : undefined;
+    }
+
+    const dispositivoPorId = this.getDispositivoPorIdComentario(seq.idDispositivo);
+    if (dispositivoPorId) {
+      dispositivoPorId.uuid2 && this.uuid2DispositivoPorSequenciaComentario.set(seq.id, dispositivoPorId.uuid2);
+      return dispositivoPorId;
+    }
+
+    return undefined;
+  }
+
+  private getUuid2DispositivoComentario(seq: SequenciaComentario): string | undefined {
+    const uuid2 = this.uuid2DispositivoPorSequenciaComentario.get(seq.id);
+    if (uuid2) {
+      return uuid2;
+    }
+
+    const dispositivo = this.getDispositivoPorIdComentario(seq.idDispositivo);
+    if (dispositivo?.uuid2) {
+      this.uuid2DispositivoPorSequenciaComentario.set(seq.id, dispositivo.uuid2);
+      return dispositivo.uuid2;
+    }
+
+    return undefined;
+  }
+
+  private getIdAtualDispositivo(dispositivo: Dispositivo): string {
+    return createElemento(dispositivo).lexmlId || dispositivo.id || '';
+  }
+
+  private atualizarIdDispositivoSequenciaComentario(sequenciaComentario: SequenciaComentario): void {
+    const dispositivo = this.getDispositivoComentarioArticulacao(sequenciaComentario);
+    const idAtual = dispositivo ? this.getIdAtualDispositivo(dispositivo) : '';
+    if (!idAtual || idAtual === sequenciaComentario.idDispositivo) {
+      return;
+    }
+
+    this.sequenciasComentario = this.sequenciasComentario.map(seq =>
+      seq.id === sequenciaComentario.id ? Object.assign(new SequenciaComentario(), seq, { idDispositivo: idAtual }) : seq
+    );
+  }
+
+  private agendarSincronizacaoReferenciasComentariosArticulacao(removerSequenciasOrfas = false): void {
+    window.clearTimeout(this.timerSincronizacaoComentariosArticulacao);
+    this.timerSincronizacaoComentariosArticulacao = window.setTimeout(() => {
+      this.timerSincronizacaoComentariosArticulacao = undefined;
+      this.sincronizarReferenciasComentariosArticulacao(removerSequenciasOrfas);
+    }, 0);
+  }
+
+  private sincronizarReferenciasComentariosArticulacao(removerSequenciasOrfas = false): void {
+    if (!this.sequenciasComentario.some(seq => this.isComentarioArticulacao(seq))) {
+      return;
+    }
+
+    const articulacao = rootStore.getState().elementoReducer.articulacao;
+    if (!articulacao) {
+      return;
+    }
+
+    let houveAtualizacao = false;
+    const idsRemovidos: string[] = [];
+    const sequenciasComentario = this.sequenciasComentario
+      .map(seq => {
+        if (!this.isComentarioArticulacao(seq)) {
+          return seq;
+        }
+
+        const dispositivo = this.getDispositivoComentarioArticulacao(seq);
+        const idAtual = dispositivo ? this.getIdAtualDispositivo(dispositivo) : '';
+        if (!idAtual && removerSequenciasOrfas) {
+          idsRemovidos.push(seq.id);
+          houveAtualizacao = true;
+          return undefined;
+        }
+
+        if (!idAtual) {
+          return seq;
+        }
+
+        if (idAtual === seq.idDispositivo) {
+          return seq;
+        }
+
+        houveAtualizacao = true;
+        return Object.assign(new SequenciaComentario(), seq, { idDispositivo: idAtual });
+      })
+      .filter((seq): seq is SequenciaComentario => !!seq);
+
+    if (houveAtualizacao) {
+      this.sequenciasComentario = sequenciasComentario;
+      idsRemovidos.forEach(idSequenciaComentario => this.limparEstadoSequenciaComentario(idSequenciaComentario));
+      idsRemovidos.length && this.atualizarAlertaGlobalComentarios();
+    }
+  }
+
+  private formatarIdentificacaoElemento(elemento?: Elemento): string {
+    if (!elemento) {
+      return '';
+    }
+
+    const tipo = this.getDescricaoTipoDispositivo(elemento.tipo);
+    const numero = elemento.rotulo || elemento.numero || '';
+    return `${tipo} ${numero}`.trim();
+  }
+
+  private formatarIdentificacaoDispositivo(dispositivo: Dispositivo): string {
+    const partes: string[] = [];
+    let atual: Dispositivo | undefined = dispositivo;
+
+    while (atual && atual.tipo !== TipoDispositivo.articulacao.tipo && partes.length < 6) {
+      if (atual.tipo !== TipoDispositivo.caput.tipo || atual === dispositivo) {
+        const parte = this.formatarParteIdentificacaoDispositivo(atual);
+        parte && partes.push(parte);
+      }
+      atual = atual.pai;
+    }
+
+    return partes.length ? partes.join(' do ') : 'Dispositivo comentado';
+  }
+
+  private formatarParteIdentificacaoDispositivo(dispositivo: Dispositivo): string {
+    const numero = dispositivo.rotulo || dispositivo.numero || '';
+
+    switch (dispositivo.tipo) {
+      case TipoDispositivo.artigo.tipo:
+        return (numero || 'artigo').replace(/^Art\./i, 'art.');
+      case TipoDispositivo.paragrafo.tipo:
+        return numero || 'parágrafo';
+      case TipoDispositivo.inciso.tipo:
+        return `inciso ${numero}`.trim();
+      case TipoDispositivo.alinea.tipo:
+        return `alínea ${numero}`.trim();
+      case TipoDispositivo.item.tipo:
+        return `item ${numero}`.trim();
+      case TipoDispositivo.caput.tipo:
+        return 'caput';
+      case TipoDispositivo.ementa.tipo:
+        return 'ementa';
+      default:
+        return `${this.getDescricaoTipoDispositivo(dispositivo.tipo)} ${numero}`.trim();
+    }
+  }
+
+  private getDescricaoTipoDispositivo(tipo?: string): string {
+    const tipoDispositivo = Object.values(TipoDispositivo).find(item => item.tipo === tipo);
+    return tipoDispositivo?.descricao?.toLowerCase() || tipo?.toLowerCase() || 'dispositivo';
   }
 
   private getEditorTextoRicoByLocalComentario(local: TipoLocalComentario): any {
@@ -2161,12 +2542,17 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
 
   private renderModalListaComentarios(): TemplateResult {
     return html`
-      <sl-dialog id="lexml-emenda-lista-comentarios-modal" class="comentario-dialog comentario-dialog--lista" label="Comentários">
+      <sl-dialog
+        id="lexml-emenda-lista-comentarios-modal"
+        class="comentario-dialog comentario-dialog--lista"
+        label="Comentários"
+        @sl-after-hide=${this.marcarModalListaComentariosFechado}
+      >
         <span slot="label" class="comentario-dialog__titulo-lista">
           <sl-icon name="chat-left-text" aria-hidden="true"></sl-icon>
           <span>Comentários</span>
         </span>
-        ${this.renderComentariosEstaticos()}
+        ${this.modalListaComentariosAberto ? this.renderComentariosEstaticos() : ''}
         <div slot="footer" class="comentario-dialog__footer">
           <sl-button variant="primary" @click=${this.fecharModalListaComentarios}>Fechar</sl-button>
         </div>
@@ -2221,12 +2607,20 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
   }
 
   private abrirModalListaComentarios = (): void => {
-    this.listaComentariosModal?.show();
-    this.rolarParaComentarioAtual();
+    this.modalListaComentariosAberto = true;
+    void this.updateComplete.then(() => {
+      this.listaComentariosModal?.show();
+      this.rolarParaComentarioAtual();
+    });
   };
 
   private fecharModalListaComentarios = (): void => {
+    this.modalListaComentariosAberto = false;
     this.listaComentariosModal?.hide();
+  };
+
+  private marcarModalListaComentariosFechado = (): void => {
+    this.modalListaComentariosAberto = false;
   };
 
   private isModoMobileOuTablet(): boolean {
@@ -2237,10 +2631,30 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
     this.acaoModalComentario = 'adicionar';
     this.comentarioEdicaoAtual = undefined;
     this.idSequenciaComentarioRespostaAtual = undefined;
+    this.comentarioArticulacaoAtual = undefined;
     this.textoTrechoComentarioAtual = event?.detail?.texto || '';
     this.editorComentarioAtual = event?.target;
     this.rangeComentarioAtual = event?.detail?.range;
     this.modoComentarioAtual = event?.detail?.modo || '';
+    this.abrirModalComentario('Adicionar comentário');
+  };
+
+  private abrirModalAdicionarComentarioArticulacao = (event: CustomEvent): void => {
+    const elemento = event.detail?.elemento as Elemento | undefined;
+    const idDispositivo = event.detail?.idDispositivo || elemento?.lexmlId;
+
+    if (!elemento || !idDispositivo || this.getSequenciaComentarioPorDispositivo(idDispositivo, elemento.uuid2)) {
+      return;
+    }
+
+    this.acaoModalComentario = 'adicionar';
+    this.comentarioEdicaoAtual = undefined;
+    this.idSequenciaComentarioRespostaAtual = undefined;
+    this.editorComentarioAtual = undefined;
+    this.rangeComentarioAtual = undefined;
+    this.modoComentarioAtual = 'articulacao';
+    this.comentarioArticulacaoAtual = { elemento, idDispositivo };
+    this.textoTrechoComentarioAtual = this.getIdentificacaoDispositivoComentario(idDispositivo, elemento);
     this.abrirModalComentario('Adicionar comentário');
   };
 
@@ -2251,6 +2665,7 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
 
     this.acaoModalComentario = 'responder';
     this.comentarioEdicaoAtual = undefined;
+    this.comentarioArticulacaoAtual = undefined;
     this.idSequenciaComentarioRespostaAtual = idSequenciaComentario;
     this.textoTrechoComentarioAtual = '';
     this.abrirModalComentario('Responder comentário');
@@ -2264,6 +2679,7 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
 
     this.acaoModalComentario = 'editar';
     this.comentarioEdicaoAtual = { idSequenciaComentario, indexComentario };
+    this.comentarioArticulacaoAtual = undefined;
     this.idSequenciaComentarioRespostaAtual = undefined;
     this.textoTrechoComentarioAtual = '';
     this.abrirModalComentario('Editar comentário', comentario.texto);
@@ -2303,6 +2719,7 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
   }
 
   private fecharModalComentario = (): void => {
+    this.comentarioArticulacaoAtual = undefined;
     this.comentarioModal?.hide();
   };
 
@@ -2364,6 +2781,11 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
 
   private adicionarComentarioSelecionado(): void {
     const textoComentario = this.comentarioTextarea?.value?.trim();
+    if (this.comentarioArticulacaoAtual) {
+      this.adicionarComentarioArticulacaoSelecionado(textoComentario);
+      return;
+    }
+
     if (!textoComentario || !this.editorComentarioAtual || !this.rangeComentarioAtual?.length) {
       return;
     }
@@ -2386,6 +2808,38 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
     this.sequenciasComentario = [...this.sequenciasComentario, sequenciaComentario];
     this.atualizarAlertaGlobalComentarios();
     this._tabsDireita?.show('comentarios');
+    if (this.isModoMobileOuTablet()) {
+      this.abrirModalListaComentarios();
+    }
+  }
+
+  private adicionarComentarioArticulacaoSelecionado(textoComentario?: string): void {
+    if (!textoComentario || !this.comentarioArticulacaoAtual) {
+      return;
+    }
+
+    const { idDispositivo } = this.comentarioArticulacaoAtual;
+    if (this.getSequenciaComentarioPorDispositivo(idDispositivo, this.comentarioArticulacaoAtual.elemento.uuid2)) {
+      return;
+    }
+
+    const sequenciaComentario = new SequenciaComentario();
+    sequenciaComentario.id = this.gerarIdSequenciaComentario();
+    sequenciaComentario.local = TipoLocalComentario.TEXTO;
+    sequenciaComentario.idDispositivo = idDispositivo;
+
+    const comentario = new Comentario();
+    comentario.usuario = rootStore.getState().elementoReducer.usuario || new Usuario();
+    comentario.dataHora = this.formatarDataHoraComentario();
+    comentario.texto = textoComentario;
+    sequenciaComentario.comentarios = [comentario];
+
+    this.comentarioArticulacaoAtual.elemento.uuid2 && this.uuid2DispositivoPorSequenciaComentario.set(sequenciaComentario.id, this.comentarioArticulacaoAtual.elemento.uuid2);
+    this.sequenciasComentario = [...this.sequenciasComentario, sequenciaComentario];
+    this.idSequenciaComentarioAtual = sequenciaComentario.id;
+    this.atualizarAlertaGlobalComentarios();
+    this._tabsDireita?.show('comentarios');
+    this.rolarParaSequenciaComentario(sequenciaComentario.id);
     if (this.isModoMobileOuTablet()) {
       this.abrirModalListaComentarios();
     }
@@ -2448,8 +2902,10 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
       return;
     }
 
-    this.registrarSequenciaComentarioRemovida(sequenciaComentario);
-    this.getEditorTextoRicoByLocalComentario(sequenciaComentario.local)?.removerComentario?.(idSequenciaComentario);
+    if (!this.isComentarioArticulacao(sequenciaComentario)) {
+      this.registrarSequenciaComentarioRemovida(sequenciaComentario);
+      this.getEditorTextoRicoByLocalComentario(sequenciaComentario.local)?.removerComentario?.(idSequenciaComentario);
+    }
     this.sequenciasComentario = this.sequenciasComentario.filter(seq => seq.id !== idSequenciaComentario);
     this.limparEstadoSequenciaComentario(idSequenciaComentario);
     this.atualizarAlertaGlobalComentarios();
@@ -2462,6 +2918,10 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
 
     const idsRemovidos: string[] = [];
     const sequenciasComentario = this.sequenciasComentario.filter(seq => {
+      if (this.isComentarioArticulacao(seq)) {
+        return true;
+      }
+
       const editor = this.getEditorTextoRicoByLocalComentario(seq.local);
       const possuiComentario = editor?.possuiComentario?.(seq.id);
 
@@ -2482,7 +2942,7 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
   }
 
   private registrarSequenciaComentarioRemovida(sequenciaComentario: SequenciaComentario): void {
-    if (!sequenciaComentario.id) {
+    if (!sequenciaComentario.id || this.isComentarioArticulacao(sequenciaComentario)) {
       return;
     }
 
@@ -2505,6 +2965,7 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
     if (this.idSequenciaComentarioAtual === idSequenciaComentario) {
       this.idSequenciaComentarioAtual = undefined;
     }
+    this.uuid2DispositivoPorSequenciaComentario.delete(idSequenciaComentario);
   }
 
   private editarComentarioSelecionado(): void {

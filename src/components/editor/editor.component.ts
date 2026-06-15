@@ -6,7 +6,8 @@ import { AdicionarAgrupadorArtigo } from './../../model/lexml/acao/adicionarAgru
 import { adicionarAgrupadorArtigoDialog } from './adicionarAgrupadorArtigoDialog';
 import { SlButton, SlInput } from '@shoelace-style/shoelace';
 import { html, LitElement, TemplateResult } from 'lit';
-import { customElement, property, query } from 'lit/decorators.js';
+import { unsafeHTML } from 'lit-html/directives/unsafe-html.js';
+import { customElement, property, query, state } from 'lit/decorators.js';
 import { connect } from 'pwa-helpers';
 import { CmdEmdUtil } from '../../emenda/comando-emenda-util';
 import { adicionarAlerta } from '../../model/alerta/acao/adicionarAlerta';
@@ -70,6 +71,7 @@ import { TextoDiff, exibirDiferencasDialog } from './exibirDiferencaDialog';
 import { EtaContainerRevisao } from '../../util/eta-quill/eta-container-revisao';
 import { DescricaoSituacao } from '../../model/dispositivo/situacao';
 import { EtaContainerOpcoes } from '../../util/eta-quill/eta-container-opcoes';
+import { EtaBlotOpcoesComentario } from '../../util/eta-quill/eta-blot-opcoes-comentario';
 import { buscaDispositivoById } from '../../model/lexml/hierarquia/hierarquiaUtil';
 import { exibirDiferencaAction } from '../../model/lexml/acao/exibirDiferencaAction';
 import { alertaGlobalEmendaSemPreenchimentoUtil, alertarInfo } from '../../redux/elemento/util/alertaUtil';
@@ -79,6 +81,7 @@ import { selecionarPaginaArticulacaoAction } from '../../model/lexml/acao/seleci
 import { navegarEntreElementosAlteradosAction, TDirecao } from '../../model/lexml/acao/navegarEntreElementosAlteradosAction';
 import { emendaDivididaDialog } from './emendaDivididaDialog';
 import { Anexo } from '../../model/emenda/emenda';
+import { iconeComentario } from '../../../assets/icons/icons';
 
 @customElement('lexml-eta-editor')
 export class EditorComponent extends connect(rootStore)(LitElement) {
@@ -122,6 +125,12 @@ export class EditorComponent extends connect(rootStore)(LitElement) {
 
   @property({ type: Array }) anexos: Anexo[] = [];
 
+  @property({ type: Array }) idsDispositivosComentados: string[] = [];
+  private idsDispositivosComentadosSet = new Set<string>();
+
+  @state()
+  private elementoSelecionadoAtual?: Elemento;
+
   constructor() {
     super();
     this.tabIndex = -1;
@@ -149,6 +158,12 @@ export class EditorComponent extends connect(rootStore)(LitElement) {
     });
   }
 
+  willUpdate(changedProperties: Map<string, unknown>): void {
+    if (changedProperties.has('idsDispositivosComentados')) {
+      this.idsDispositivosComentadosSet = new Set((this.idsDispositivosComentados || []).filter(Boolean));
+    }
+  }
+
   stateChanged(state: any): void {
     if (!this.quill) {
       this.quillNaoInicializado(state);
@@ -167,6 +182,12 @@ export class EditorComponent extends connect(rootStore)(LitElement) {
           this.alertaGlobalEmendaSemPreenchimento(state.elementoReducer.articulacao);
         }, 0);
       }
+    }
+  }
+
+  updated(changedProperties: Map<string, unknown>): void {
+    if (changedProperties.has('idsDispositivosComentados')) {
+      setTimeout(() => this.atualizarIndicadoresComentarioDispositivos(), 0);
     }
   }
 
@@ -259,6 +280,17 @@ export class EditorComponent extends connect(rootStore)(LitElement) {
             </span>
           </button>
 
+          <button
+            type="button"
+            class="button-comentario-articulacao"
+            title=${this.getTituloBotaoComentarioArticulacao()}
+            aria-label="Adicionar comentário"
+            ?disabled=${!this.podeAdicionarComentarioArticulacao}
+            @click=${this.abrirModalComentarioArticulacao}
+          >
+            ${unsafeHTML(iconeComentario)}
+          </button>
+
           <span id="pos-select-paginacao"></span>
 
           <lexml-emenda-switch-revisao
@@ -340,6 +372,49 @@ export class EditorComponent extends connect(rootStore)(LitElement) {
   private artigoOndeCouber(): void {
     //rootStore.dispatch(validarArticulacaAction.execute());
   }
+
+  private isElementoComComentario(elemento?: Elemento): boolean {
+    return (
+      !!elemento && ((!!elemento.lexmlId && this.idsDispositivosComentadosSet.has(elemento.lexmlId)) || (!!elemento.uuid2 && this.idsDispositivosComentadosSet.has(elemento.uuid2)))
+    );
+  }
+
+  private isLinhaComComentario(linha: EtaContainerTable): boolean {
+    return (!!linha.lexmlId && this.idsDispositivosComentadosSet.has(linha.lexmlId)) || (!!linha.uuid2 && this.idsDispositivosComentadosSet.has(linha.uuid2));
+  }
+
+  private get podeAdicionarComentarioArticulacao(): boolean {
+    const elemento = this.elementoSelecionadoAtual;
+    return !!elemento?.lexmlId && elemento.tipo !== 'Articulacao' && !this.isElementoComComentario(elemento);
+  }
+
+  private getTituloBotaoComentarioArticulacao(): string {
+    if (this.podeAdicionarComentarioArticulacao) {
+      return 'Adicionar comentário';
+    }
+    if (this.isElementoComComentario(this.elementoSelecionadoAtual)) {
+      return 'Este dispositivo já possui comentário';
+    }
+    return 'Selecione um dispositivo para adicionar comentário';
+  }
+
+  private abrirModalComentarioArticulacao = (): void => {
+    if (!this.podeAdicionarComentarioArticulacao || !this.elementoSelecionadoAtual?.lexmlId) {
+      return;
+    }
+
+    this.dispatchEvent(
+      new CustomEvent('abrir-modal-comentario-articulacao', {
+        bubbles: true,
+        composed: true,
+        detail: {
+          elemento: this.elementoSelecionadoAtual,
+          idDispositivo: this.elementoSelecionadoAtual.lexmlId,
+          uuid2Dispositivo: this.elementoSelecionadoAtual.uuid2,
+        },
+      })
+    );
+  };
 
   private onSelectionChange: SelectionChangeHandler = (range: RangeStatic, oldRange: RangeStatic, source: Sources): void => {
     if (range?.length === 0 && source === Quill.sources.USER) {
@@ -634,9 +709,15 @@ export class EditorComponent extends connect(rootStore)(LitElement) {
     const linha: EtaContainerTable = this.quill.linhaAtual;
     if (linha) {
       const elemento: Elemento = this.criarElemento(uuid, linha!.uuid2, linha.lexmlId, linha.tipo ?? '', '', linha.numero, linha.hierarquia);
+      this.atualizarElementoSelecionadoAtual(elemento);
       rootStore.dispatch(elementoSelecionadoAction.execute(elemento));
       this.quill.processandoMudancaLinha = false;
     }
+  }
+
+  private atualizarElementoSelecionadoAtual(elemento?: Elemento): void {
+    this.elementoSelecionadoAtual = elemento?.lexmlId && elemento.tipo !== 'Articulacao' ? elemento : undefined;
+    this.requestUpdate();
   }
 
   private undoRedoEstrutura(tipo: string): void {
@@ -762,6 +843,7 @@ export class EditorComponent extends connect(rootStore)(LitElement) {
           break;
 
         case StateType.ElementoSelecionado:
+          this.atualizarElementoSelecionadoAtual(event.elementos?.[0]);
           this.atualizarAtributos(event);
           if (ultimoEventoElementoSelecionado === event) {
             this.montarMenuContexto(event);
@@ -1258,6 +1340,11 @@ export class EditorComponent extends connect(rootStore)(LitElement) {
       this.exibirDiferencas(event.detail.elemento);
     });
 
+    editorHtml.addEventListener('exibir-comentario-dispositivo', (event: any) => {
+      event.stopImmediatePropagation();
+      this.selecionarComentarioDispositivo(event.detail.elemento);
+    });
+
     editorHtml.addEventListener('onmodalsufixos', (event: any) => {
       event.stopImmediatePropagation();
       this.exibirModalSufixos();
@@ -1296,6 +1383,84 @@ export class EditorComponent extends connect(rootStore)(LitElement) {
       }
       exibirDiferencasDialog(diff);
     }
+  }
+
+  private selecionarComentarioDispositivo(elemento: Elemento): void {
+    if (!elemento?.lexmlId) {
+      return;
+    }
+
+    this.selecionarDispositivoPorId(elemento.lexmlId, elemento.uuid2, elemento.uuid);
+
+    this.dispatchEvent(
+      new CustomEvent('selecionar-comentario-articulacao', {
+        bubbles: true,
+        composed: true,
+        detail: {
+          idDispositivo: elemento.lexmlId,
+          uuid2Dispositivo: elemento.uuid2,
+        },
+      })
+    );
+  }
+
+  public selecionarDispositivoPorId(idDispositivo: string, uuid2Dispositivo?: string, uuid?: number): boolean {
+    const linhaPorUuid = typeof uuid === 'number' ? this.quill.getLinha(uuid) : undefined;
+    const linha =
+      linhaPorUuid?.lexmlId === idDispositivo || (!!uuid2Dispositivo && linhaPorUuid?.uuid2 === uuid2Dispositivo)
+        ? linhaPorUuid
+        : this.getLinhaPorIdDispositivo(idDispositivo, uuid2Dispositivo);
+    if (!linha?.blotConteudo) {
+      return false;
+    }
+
+    this.quill.desmarcarLinhaAtual(this.quill.linhaAtual);
+    this.quill.atualizarLinhaCorrente(linha);
+    this.elementoSelecionado(linha.uuid);
+
+    try {
+      this.quill.setSelection(this.quill.getIndex(linha.blotConteudo), 0, Quill.sources.SILENT);
+    } catch (error) {
+      // Mantém apenas a marcação visual da linha quando o índice não pode ser aplicado.
+    }
+
+    this.centralizarLinhaNoEditor(linha);
+    window.requestAnimationFrame(() => this.centralizarLinhaNoEditor(linha));
+    return true;
+  }
+
+  private centralizarLinhaNoEditor(linha: EtaContainerTable, behavior: ScrollBehavior = 'smooth'): void {
+    const linhaElement = linha.domNode as HTMLElement;
+    const containerRolagem = this.getContainerRolagemLinha(linhaElement);
+
+    if (!containerRolagem) {
+      linhaElement.scrollIntoView?.({ behavior, block: 'center', inline: 'nearest' });
+      return;
+    }
+
+    const linhaRect = linhaElement.getBoundingClientRect();
+    const containerRect = containerRolagem.getBoundingClientRect();
+    const topAtualLinhaNoContainer = linhaRect.top - containerRect.top + containerRolagem.scrollTop;
+    const topCentralizado = topAtualLinhaNoContainer - (containerRolagem.clientHeight - linhaRect.height) / 2;
+
+    containerRolagem.scrollTo({
+      top: Math.max(0, topCentralizado),
+      behavior,
+    });
+  }
+
+  private getContainerRolagemLinha(elemento: HTMLElement): HTMLElement | undefined {
+    let atual = elemento.parentElement;
+
+    while (atual && atual !== this) {
+      const overflowY = window.getComputedStyle(atual).overflowY;
+      if (['auto', 'scroll', 'overlay'].includes(overflowY) && atual.scrollHeight > atual.clientHeight) {
+        return atual;
+      }
+      atual = atual.parentElement;
+    }
+
+    return this.querySelector('#lx-eta-editor .ql-editor') as HTMLElement | undefined;
   }
 
   aceitarRevisao(elemento: Elemento): void {
@@ -1458,6 +1623,7 @@ export class EditorComponent extends connect(rootStore)(LitElement) {
           }
         }
       });
+      this.atualizarIndicadoresComentarioDispositivos();
       !isMudancaDePagina && this.quill.limparHistory();
       if (elementos.length > 1) {
         setTimeout(() => {
@@ -1651,6 +1817,64 @@ export class EditorComponent extends connect(rootStore)(LitElement) {
     }
   }
 
+  private getLinhasArticulacao(): EtaContainerTable[] {
+    return Array.from(this.querySelectorAll(`.${EtaContainerTable.className}`))
+      .map(node => EtaQuill.find(node as HTMLElement))
+      .filter((blot): blot is EtaContainerTable => blot instanceof EtaContainerTable);
+  }
+
+  private getLinhaPorIdDispositivo(idDispositivo: string, uuid2Dispositivo?: string): EtaContainerTable | undefined {
+    return this.getLinhasArticulacao().find(linha => linha.lexmlId === idDispositivo || (!!uuid2Dispositivo && linha.uuid2 === uuid2Dispositivo));
+  }
+
+  private atualizarIndicadoresComentarioDispositivos(): void {
+    if (!this.quill) {
+      return;
+    }
+
+    this.getLinhasArticulacao().forEach(linha => {
+      this.atualizarIndicadorComentarioLinha(linha, this.isLinhaComComentario(linha));
+    });
+  }
+
+  private atualizarIndicadorComentarioLinha(linha: EtaContainerTable, possuiComentario: boolean): void {
+    if (!linha?.lexmlId || linha.tipo === 'Articulacao') {
+      return;
+    }
+
+    if (possuiComentario) {
+      const botaoComentario = this.getBotaoComentarioLinha(linha);
+      const containerFinal = linha.containerRevisao ?? linha.containerOpcoes;
+
+      if (botaoComentario && botaoComentario.parent === containerFinal) {
+        botaoComentario.atualizarElemento(linha.elemento);
+        return;
+      }
+
+      botaoComentario?.remove();
+
+      if (containerFinal) {
+        new EtaBlotOpcoesComentario(linha.elemento).insertInto(containerFinal);
+        linha.containerOpcoes?.vazio && linha.containerOpcoes.remove();
+        return;
+      }
+
+      const containerTr = linha.children.head;
+      containerTr.insertBefore(EtaQuillUtil.criarContainerOpcoes(linha.elemento, false, true), linha.containerDireito.prev);
+      return;
+    }
+
+    const botaoComentario = this.getBotaoComentarioLinha(linha);
+    if (botaoComentario) {
+      botaoComentario.remove();
+      linha.containerOpcoes?.vazio && linha.containerOpcoes.remove();
+    }
+  }
+
+  private getBotaoComentarioLinha(linha: EtaContainerTable): EtaBlotOpcoesComentario | undefined {
+    return linha.containerRevisao?.blotBotaoComentario ?? linha.containerOpcoes?.blotBotaoComentario;
+  }
+
   private indicadorTextoModificado(events: StateEvent[]): void {
     const ignorarStateTypes: StateType[] = [
       StateType.DocumentoCarregado,
@@ -1686,8 +1910,13 @@ export class EditorComponent extends connect(rootStore)(LitElement) {
       const containerOpcoes = document.getElementById(EtaContainerOpcoes.className + uuid);
       if (containerOpcoes) {
         const linha = this.quill.getLinha(uuid);
-        linha?.containerOpcoes?.remove();
-        containerOpcoes.remove();
+        if (linha?.containerOpcoes?.blotBotaoComentario) {
+          linha.containerOpcoes.blotBotaoExibirDiferencas?.remove();
+          linha.containerOpcoes.vazio && linha.containerOpcoes.remove();
+        } else {
+          linha?.containerOpcoes?.remove();
+          containerOpcoes.remove();
+        }
       }
     });
 
@@ -1704,7 +1933,9 @@ export class EditorComponent extends connect(rootStore)(LitElement) {
             containerOpcoes.remove();
           }
           const containerTr = linha.children.head;
-          containerTr.insertBefore(EtaQuillUtil.criarContainerOpcoes(mapElementos.get(uuid)!), linha.containerDireito.prev);
+          const possuiComentario = this.isLinhaComComentario(linha);
+          containerTr.insertBefore(EtaQuillUtil.criarContainerOpcoes(mapElementos.get(uuid)!, true, false), linha.containerDireito.prev);
+          this.atualizarIndicadorComentarioLinha(linha, possuiComentario);
         }
       }
     });

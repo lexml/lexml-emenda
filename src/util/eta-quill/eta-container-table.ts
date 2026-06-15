@@ -16,6 +16,7 @@ import { EtaContainerTdDireito } from './eta-container-td-direito';
 import { RevisaoElemento } from '../../model/revisao/revisao';
 import { EtaContainerRevisao } from './eta-container-revisao';
 import { EtaContainer } from './eta-container';
+import { EtaContainerOpcoes } from './eta-container-opcoes';
 
 export class EtaContainerTable extends EtaContainer {
   static blotName = 'EtaContainerTable';
@@ -116,6 +117,10 @@ export class EtaContainerTable extends EtaContainer {
 
   get containerRevisao(): EtaContainerRevisao | undefined {
     return this.findBlotByBlotName(this.children, EtaContainerRevisao.blotName);
+  }
+
+  get containerOpcoes(): EtaContainerOpcoes | undefined {
+    return this.findBlotByBlotName(this.children, EtaContainerOpcoes.blotName);
   }
 
   get containerDireito(): EtaContainerTdDireito {
