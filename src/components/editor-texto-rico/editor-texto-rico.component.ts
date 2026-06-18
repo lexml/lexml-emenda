@@ -28,6 +28,7 @@ import { AlterarLarguraTabelaColunaModalComponent } from './alterar-largura-tabe
 import { AlterarLarguraImagemModalComponent } from './alterar-largura-imagem-modal';
 import { notaRodapeCss } from './notaRodape.css';
 import { NOTA_RODAPE_CHANGE_EVENT, NOTA_RODAPE_REMOVE_EVENT, NotaRodape } from './notaRodape';
+import { COMENTARIO_ID_ATTRIBUTE, COMENTARIO_TAG } from './moduloComentario';
 import { SwitchRevisaoComponent } from '../switchRevisao/switch-revisao.component';
 import { atualizaRevisaoJustificativa } from '../../redux/elemento/reducer/atualizaRevisaoJustificativa';
 import { atualizaRevisaoTextoLivre } from '../../redux/elemento/reducer/atualizaRevisaoTextoLivre';
@@ -60,6 +61,9 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
   onChange: Observable<string> = new Observable<string>();
   private timerOnChange?: any;
   private idsSequenciasComentarioRemovidas = new Set<string>();
+  private comentarioOverlayContainer?: HTMLElement;
+  private comentarioOverlayScrollContainer?: HTMLElement;
+  private comentarioOverlayFrame?: number;
 
   quill?: Quill;
 
@@ -252,6 +256,11 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
   disconnectedCallback(): void {
     this.quill?.off('text-change', this.updateTexto);
     this.quill?.off('selection-change', this.onSelectionChange);
+    this.comentarioOverlayScrollContainer?.removeEventListener('scroll', this.agendarAtualizacaoIconesComentariosTexto);
+    window.removeEventListener('resize', this.onResizeComentarioOverlay);
+    if (this.comentarioOverlayFrame) {
+      cancelAnimationFrame(this.comentarioOverlayFrame);
+    }
     super.disconnectedCallback();
   }
 
@@ -394,6 +403,7 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
       this.setContent(this.texto, this.notasRodape);
       this.addBotoesExtra();
       this.configureTooltip();
+      this.configurarOverlayComentarios();
       this.elTableManagerButton = this.querySelectorAll('span.ql-table')[1] as HTMLSpanElement;
       this.elAdicionarComentarioButton = this.querySelector(`button.${CLASS_BUTTON_ADICIONAR_COMENTARIO}`) as HTMLButtonElement;
       this.atualizaEstadoBotaoComentario(this.quill?.getSelection());
@@ -405,6 +415,7 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
 
       quillContainer.addEventListener('contextmenu', this.menuContextImagem);
       quillContainer.addEventListener('click', this.onClick);
+      this.agendarAtualizacaoIconesComentariosTexto();
 
       const toolbar = this.quill.getModule('toolbar');
       toolbar.addHandler('table', (value: string) => {
@@ -566,6 +577,7 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
     this.removerComentarioRemovido(idSequenciaComentario);
     const comentarioAdicionado = (this.quill as any)?.comentarios?.adicionar(idSequenciaComentario, rangeComentario);
     this.atualizaEstadoBotaoComentario(this.quill?.getSelection());
+    this.agendarAtualizacaoIconesComentariosTexto();
     return !!comentarioAdicionado;
   }
 
@@ -576,6 +588,7 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
   public removerComentario(idSequenciaComentario: string): boolean {
     const comentarioRemovido = (this.quill as any)?.comentarios?.remover(idSequenciaComentario);
     this.atualizaEstadoBotaoComentario(this.quill?.getSelection());
+    this.agendarAtualizacaoIconesComentariosTexto();
     return !!comentarioRemovido;
   }
 
@@ -619,6 +632,7 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
       this.destacarComentarioPorId(idSequenciaComentario);
       this.centralizarComentarioNoEditor(idSequenciaComentario);
     }, 0);
+    this.agendarAtualizacaoIconesComentariosTexto();
     return true;
   }
 
@@ -642,7 +656,7 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
 
     const containerRect = scrollingContainer.getBoundingClientRect();
     const comentarioRect = comentario.getBoundingClientRect();
-    const top = Math.max(0, scrollingContainer.scrollTop + comentarioRect.top - containerRect.top - scrollingContainer.clientHeight / 2 + comentarioRect.height / 2);
+    const top = Math.max(0, scrollingContainer.scrollTop + comentarioRect.top - containerRect.top - scrollingContainer.clientHeight * 0.25 + comentarioRect.height / 2);
 
     if (typeof scrollingContainer.scrollTo === 'function') {
       scrollingContainer.scrollTo({ top, behavior: 'smooth' });
@@ -687,6 +701,7 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
       }
     });
     this.dispatchEventComentarioSelecionado(idSequenciaComentario);
+    this.agendarAtualizacaoIconesComentariosTexto();
   }
 
   public limparDestaqueComentarioSelecionado(dispatchEvent = true): void {
@@ -695,9 +710,10 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
     if (dispatchEvent) {
       this.dispatchEventComentarioSelecionado(undefined);
     }
+    this.agendarAtualizacaoIconesComentariosTexto();
   }
 
-  private destacarComentarioPorId(idSequenciaComentario: string): boolean {
+  private destacarComentarioPorId(idSequenciaComentario: string, abrirAbaComentarios = false): boolean {
     if (!this.quill?.root) {
       return false;
     }
@@ -713,13 +729,14 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
     });
 
     if (destacouComentario) {
-      this.dispatchEventComentarioSelecionado(idSequenciaComentario);
+      this.dispatchEventComentarioSelecionado(idSequenciaComentario, abrirAbaComentarios);
     }
 
+    this.agendarAtualizacaoIconesComentariosTexto();
     return destacouComentario;
   }
 
-  private dispatchEventComentarioSelecionado(idSequenciaComentario?: string): void {
+  private dispatchEventComentarioSelecionado(idSequenciaComentario?: string, abrirAbaComentarios = false): void {
     this.dispatchEvent(
       new CustomEvent('comentario-selecionado', {
         bubbles: true,
@@ -727,9 +744,190 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
         detail: {
           idSequenciaComentario,
           modo: this.modo,
+          abrirAbaComentarios,
         },
       })
     );
+  }
+
+  private configurarOverlayComentarios(): void {
+    if (!this.isModoTextoRicoComComentarios() || !this.quill?.root) {
+      return;
+    }
+
+    const quillContainer = this.querySelector(`#${this.id}-inner`) as HTMLElement | null;
+    if (!quillContainer) {
+      return;
+    }
+
+    let overlayContainer = quillContainer.querySelector('.comentarios-texto-overlay') as HTMLElement | null;
+    if (!overlayContainer) {
+      overlayContainer = document.createElement('div');
+      overlayContainer.className = 'comentarios-texto-overlay';
+      quillContainer.appendChild(overlayContainer);
+    }
+
+    this.comentarioOverlayContainer = overlayContainer;
+
+    const scrollingContainer = (((this.quill as any).scrollingContainer as HTMLElement | undefined) || this.quill.root) as HTMLElement;
+    if (this.comentarioOverlayScrollContainer !== scrollingContainer) {
+      this.comentarioOverlayScrollContainer?.removeEventListener('scroll', this.agendarAtualizacaoIconesComentariosTexto);
+      this.comentarioOverlayScrollContainer = scrollingContainer;
+      this.comentarioOverlayScrollContainer.addEventListener('scroll', this.agendarAtualizacaoIconesComentariosTexto);
+    }
+
+    window.removeEventListener('resize', this.onResizeComentarioOverlay);
+    window.addEventListener('resize', this.onResizeComentarioOverlay);
+  }
+
+  private onResizeComentarioOverlay = (): void => this.agendarAtualizacaoIconesComentariosTexto();
+
+  private agendarAtualizacaoIconesComentariosTexto = (): void => {
+    if (!this.isModoTextoRicoComComentarios()) {
+      return;
+    }
+
+    if (this.comentarioOverlayFrame) {
+      cancelAnimationFrame(this.comentarioOverlayFrame);
+    }
+
+    this.comentarioOverlayFrame = requestAnimationFrame(() => {
+      this.comentarioOverlayFrame = undefined;
+      this.atualizarIconesComentariosTexto();
+    });
+  };
+
+  private atualizarIconesComentariosTexto(): void {
+    if (!this.isModoTextoRicoComComentarios() || !this.quill?.root || !this.comentarioOverlayContainer) {
+      return;
+    }
+
+    const quillContainer = this.comentarioOverlayContainer.parentElement as HTMLElement | null;
+    if (!quillContainer) {
+      return;
+    }
+
+    const comentariosPorId = this.getElementosComentarioPorId();
+    const idsAtuais = new Set(comentariosPorId.keys());
+
+    this.comentarioOverlayContainer.querySelectorAll<HTMLButtonElement>('.comentario-texto-icone').forEach(botao => {
+      const idSequenciaComentario = botao.dataset.idSequenciaComentario || '';
+      if (!idsAtuais.has(idSequenciaComentario)) {
+        botao.remove();
+      }
+    });
+
+    comentariosPorId.forEach((elementos, idSequenciaComentario) => {
+      const rect = this.getUltimoRectComentarioVisivel(elementos, quillContainer);
+      const botaoExistente = this.getBotaoIconeComentarioTexto(idSequenciaComentario);
+
+      if (!rect) {
+        botaoExistente?.remove();
+        return;
+      }
+
+      const botao = botaoExistente || this.criarBotaoIconeComentarioTexto(idSequenciaComentario);
+      if (!botaoExistente) {
+        this.comentarioOverlayContainer?.appendChild(botao);
+      }
+
+      this.posicionarBotaoIconeComentarioTexto(botao, rect, quillContainer);
+      botao.classList.toggle(
+        'comentario-texto-icone--selecionado',
+        elementos.some(el => el.classList.contains('comentario-selecionado'))
+      );
+    });
+  }
+
+  private getElementosComentarioPorId(): Map<string, HTMLElement[]> {
+    const comentariosPorId = new Map<string, HTMLElement[]>();
+    const root = this.quill?.root as HTMLElement | undefined;
+    root?.querySelectorAll(`${COMENTARIO_TAG}[${COMENTARIO_ID_ATTRIBUTE}]`).forEach(el => {
+      const idSequenciaComentario = el.getAttribute(COMENTARIO_ID_ATTRIBUTE);
+      if (!idSequenciaComentario) {
+        return;
+      }
+
+      if (!comentariosPorId.has(idSequenciaComentario)) {
+        comentariosPorId.set(idSequenciaComentario, []);
+      }
+
+      comentariosPorId.get(idSequenciaComentario)?.push(el as HTMLElement);
+    });
+
+    return comentariosPorId;
+  }
+
+  private getUltimoRectComentarioVisivel(elementos: HTMLElement[], quillContainer: HTMLElement): DOMRect | undefined {
+    const containerRect = quillContainer.getBoundingClientRect();
+    let ultimoRect: DOMRect | undefined;
+
+    elementos.forEach(el => {
+      Array.from(el.getClientRects()).forEach(rect => {
+        if (!rect.width && !rect.height) {
+          return;
+        }
+
+        const visivelVerticalmente = rect.bottom >= containerRect.top && rect.top <= containerRect.bottom;
+        const visivelHorizontalmente = rect.right >= containerRect.left && rect.left <= containerRect.right;
+        if (visivelVerticalmente && visivelHorizontalmente) {
+          ultimoRect = rect;
+        }
+      });
+    });
+
+    return ultimoRect;
+  }
+
+  private getBotaoIconeComentarioTexto(idSequenciaComentario: string): HTMLButtonElement | undefined {
+    return Array.from(this.comentarioOverlayContainer?.querySelectorAll<HTMLButtonElement>('.comentario-texto-icone') || []).find(
+      botao => botao.dataset.idSequenciaComentario === idSequenciaComentario
+    );
+  }
+
+  private criarBotaoIconeComentarioTexto(idSequenciaComentario: string): HTMLButtonElement {
+    const botao = document.createElement('button');
+    botao.type = 'button';
+    botao.className = 'comentario-texto-icone';
+    botao.dataset.idSequenciaComentario = idSequenciaComentario;
+    botao.title = 'Exibir comentario';
+    botao.setAttribute('aria-label', 'Exibir comentario');
+    botao.setAttribute('contenteditable', 'false');
+    botao.innerHTML = `
+      <svg class="comentario-texto-icone__svg" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+        <path class="comentario-texto-icone__fundo" d="M2 1a1 1 0 0 0-1 1v11.586l2-2A2 2 0 0 1 4.414 11H14a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H2z" />
+        <path class="comentario-texto-icone__contorno" d="M14 1a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H4.414A2 2 0 0 0 3 11.586l-2 2V2a1 1 0 0 1 1-1h12zM2 0a2 2 0 0 0-2 2v12.793a.5.5 0 0 0 .854.353l2.853-2.853A1 1 0 0 1 4.414 12H14a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2H2z" />
+        <path class="comentario-texto-icone__contorno" d="M3 3.5a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5zM3 6a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9A.5.5 0 0 1 3 6zm0 2.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5z" />
+      </svg>
+    `;
+    botao.addEventListener('mousedown', ev => {
+      ev.preventDefault();
+      ev.stopPropagation();
+    });
+    botao.addEventListener('click', ev => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      this.selecionarComentarioPeloIconeTexto(idSequenciaComentario);
+    });
+    return botao;
+  }
+
+  private posicionarBotaoIconeComentarioTexto(botao: HTMLButtonElement, rect: DOMRect, quillContainer: HTMLElement): void {
+    const containerRect = quillContainer.getBoundingClientRect();
+    const tamanhoBotao = 16;
+    const leftMax = Math.max(0, quillContainer.clientWidth - tamanhoBotao - 2);
+    const left = Math.min(Math.max(0, rect.right - containerRect.left + 2), leftMax);
+    const top = rect.top - containerRect.top + rect.height / 2 - tamanhoBotao / 2 + 1;
+
+    botao.style.transform = `translate(${Math.round(left)}px, ${Math.round(top)}px)`;
+  }
+
+  private selecionarComentarioPeloIconeTexto(idSequenciaComentario: string): void {
+    if (!this.destacarComentarioPorId(idSequenciaComentario, true)) {
+      return;
+    }
+
+    this.centralizarComentarioNoEditor(idSequenciaComentario);
   }
 
   private atualizaDestaqueRevisaoSelecionada(range: any): void {
@@ -910,10 +1108,12 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
     this.configAbrindoTexto(false);
     this.notasRodape = notasRodape;
     this.atualizaAtributosRevisaoTextoRico();
+    this.agendarAtualizacaoIconesComentariosTexto();
 
     setTimeout(() => {
       this.quill!.history.clear();
       (this.quill as any).notasRodape.associar(notasRodape);
+      this.agendarAtualizacaoIconesComentariosTexto();
     }, 100); // A linha anterior gera um history, então é necessário limpar novamente.
 
     if (!textoAjustado) this.quill.format('align', 'justify');
@@ -956,6 +1156,7 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
     this.atualizaStatusElementosRevisao(false);
     this.buildRevisoes();
     this.alertaGlobalRevisao();
+    this.agendarAtualizacaoIconesComentariosTexto();
   };
 
   public alertaGlobalRevisao(): void {
@@ -1006,6 +1207,10 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
   }
 
   private isModoTextoRicoComRevisaoVisualAtualizada(): boolean {
+    return this.modo === Modo.JUSTIFICATIVA || this.modo === Modo.TEXTO_LIVRE;
+  }
+
+  private isModoTextoRicoComComentarios(): boolean {
     return this.modo === Modo.JUSTIFICATIVA || this.modo === Modo.TEXTO_LIVRE;
   }
 

@@ -310,6 +310,67 @@ export const editorTextoRicoCss = html`
 
     .lexml-emenda-editor-texto-rico .ql-editor comentario {
       background-color: #fff8c5;
+      margin-right: 22px;
+    }
+
+    .lexml-emenda-editor-texto-rico.ql-container {
+      position: relative;
+    }
+
+    .lexml-emenda-editor-texto-rico .comentarios-texto-overlay {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 6;
+      overflow: visible;
+    }
+
+    .lexml-emenda-editor-texto-rico .comentario-texto-icone {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 16px;
+      height: 16px;
+      padding: 0;
+      border: 0;
+      background-color: transparent;
+      cursor: pointer;
+      opacity: 1;
+      overflow: visible;
+      pointer-events: auto;
+      z-index: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .lexml-emenda-editor-texto-rico .comentario-texto-icone::before {
+      display: none;
+    }
+
+    .lexml-emenda-editor-texto-rico .comentario-texto-icone__svg {
+      width: 14px;
+      height: 14px;
+      display: block;
+      pointer-events: none;
+    }
+
+    .lexml-emenda-editor-texto-rico .comentario-texto-icone__fundo {
+      fill: #fff8c5;
+    }
+
+    .lexml-emenda-editor-texto-rico .comentario-texto-icone__contorno {
+      fill: #111827;
+    }
+
+    .lexml-emenda-editor-texto-rico .comentario-texto-icone:hover,
+    .lexml-emenda-editor-texto-rico .comentario-texto-icone--selecionado {
+      background-color: transparent;
+    }
+
+    .lexml-emenda-editor-texto-rico .comentario-texto-icone:hover .comentario-texto-icone__fundo,
+    .lexml-emenda-editor-texto-rico .comentario-texto-icone--selecionado .comentario-texto-icone__fundo {
+      fill: #fdd663;
     }
 
     .lexml-emenda-editor-texto-rico .ql-editor comentario.comentario-selecionado {

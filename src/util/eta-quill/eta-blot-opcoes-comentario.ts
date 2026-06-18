@@ -15,6 +15,7 @@ export class EtaBlotOpcoesComentario extends EtaBlot {
     node.innerHTML = ' ';
     node.setAttribute('contenteditable', 'false');
     node.setAttribute('class', EtaBlotOpcoesComentario.className);
+    node.setAttribute('type', 'button');
     node.setAttribute('title', 'Exibir comentario');
     node.setAttribute('aria-label', 'Exibir comentario');
     EtaBlotOpcoesComentario.atualizarAtributos(elemento, node);

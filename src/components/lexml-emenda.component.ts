@@ -1930,15 +1930,28 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
 
   private atualizarComentarioAtual = (event: CustomEvent): void => {
     const idSequenciaComentario = event.detail?.idSequenciaComentario;
+    const abrirAbaComentarios = !!event.detail?.abrirAbaComentarios;
     const idAtual = this.sequenciasComentario.some(seq => seq.id === idSequenciaComentario) ? idSequenciaComentario : undefined;
 
     if (this.idSequenciaComentarioAtual === idAtual) {
+      if (idAtual && abrirAbaComentarios) {
+        this._tabsDireita?.show('comentarios');
+        this.rolarParaSequenciaComentario(idAtual);
+      } else if (idAtual) {
+        this.rolarParaSequenciaComentario(idAtual);
+      }
       return;
     }
 
     this.idSequenciaComentarioAtual = idAtual;
 
-    if (idAtual && this.isAbaComentariosAtiva()) {
+    if (idAtual && abrirAbaComentarios) {
+      this._tabsDireita?.show('comentarios');
+      this.rolarParaSequenciaComentario(idAtual);
+      return;
+    }
+
+    if (idAtual) {
       this.rolarParaComentarioAtual();
     }
   };
@@ -1953,6 +1966,9 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
     }
 
     if (this.idSequenciaComentarioAtual === idAtual) {
+      if (idAtual) {
+        this.rolarParaSequenciaComentario(idAtual);
+      }
       return;
     }
 
@@ -1962,17 +1978,22 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
 
     this.idSequenciaComentarioAtual = idAtual;
 
-    if (idAtual && this.isAbaComentariosAtiva()) {
+    if (idAtual) {
       this.rolarParaComentarioAtual();
     }
   }
 
   private isAbaComentariosAtiva(): boolean {
+    const activeTab = this._tabsDireita?.getActiveTab?.();
+    if (activeTab) {
+      return activeTab.panel === 'comentarios';
+    }
+
     return !!this.querySelector('sl-tab[panel="comentarios"][active], sl-tab-panel[name="comentarios"][active]');
   }
 
   private rolarParaComentarioAtual(): void {
-    if (!this.idSequenciaComentarioAtual || !this.isAbaComentariosAtiva()) {
+    if (!this.idSequenciaComentarioAtual) {
       return;
     }
 
@@ -1981,12 +2002,63 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
 
   private rolarParaSequenciaComentario(idSequenciaComentario: string): void {
     void this.updateComplete.then(() => {
+      const rolar = (): void => {
+        const painelComentarios = this.getPainelComentariosVisivel();
+        const card = painelComentarios?.querySelector(`[data-id-sequencia-comentario="${idSequenciaComentario}"]`) as HTMLElement | null;
+        if (card && this.isElementoVisivel(card)) {
+          this.rolarCardComentarioParaPosicao(card, 0.25);
+        }
+      };
+
       window.requestAnimationFrame(() => {
-        const cards = Array.from(this.querySelectorAll(`[data-id-sequencia-comentario="${idSequenciaComentario}"]`)) as HTMLElement[];
-        const cardVisivel = cards.find(card => card.offsetWidth > 0 || card.offsetHeight > 0 || card.getClientRects().length > 0);
-        (cardVisivel ?? cards[0])?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        rolar();
+        window.requestAnimationFrame(rolar);
+        setTimeout(rolar, 80);
+        setTimeout(rolar, 200);
       });
     });
+  }
+
+  private getPainelComentariosVisivel(): HTMLElement | undefined {
+    const painel = this.querySelector('sl-tab-panel[name="comentarios"]') as HTMLElement | null;
+    return painel && this.isElementoVisivel(painel) ? painel : undefined;
+  }
+
+  private isElementoVisivel(elemento: HTMLElement): boolean {
+    return elemento.offsetWidth > 0 || elemento.offsetHeight > 0 || elemento.getClientRects().length > 0;
+  }
+
+  private rolarCardComentarioParaPosicao(card: HTMLElement, proporcaoAltura: number): void {
+    const containerRolagem = this.getContainerRolagemComentario(card);
+    if (!containerRolagem?.clientHeight) {
+      card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
+
+    const containerRect = containerRolagem.getBoundingClientRect();
+    const cardRect = card.getBoundingClientRect();
+    const topAtualCardNoContainer = cardRect.top - containerRect.top + containerRolagem.scrollTop;
+
+    containerRolagem.scrollTo({ top: Math.max(0, topAtualCardNoContainer - containerRolagem.clientHeight * proporcaoAltura), behavior: 'smooth' });
+  }
+
+  private getContainerRolagemComentario(card: HTMLElement): HTMLElement | undefined {
+    const tabPanel = card.closest('sl-tab-panel') as HTMLElement | null;
+    const tabPanelBase = tabPanel?.shadowRoot?.querySelector('[part~="base"]') as HTMLElement | null;
+    if (tabPanelBase?.clientHeight) {
+      return tabPanelBase;
+    }
+
+    let atual = card.parentElement;
+    while (atual && atual !== this) {
+      const style = window.getComputedStyle(atual);
+      if (['auto', 'scroll', 'overlay'].includes(style.overflowY) && atual.scrollHeight > atual.clientHeight) {
+        return atual;
+      }
+      atual = atual.parentElement;
+    }
+
+    return undefined;
   }
 
   private limparComentarioAtual(): void {
@@ -2806,11 +2878,27 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
     }
 
     this.sequenciasComentario = [...this.sequenciasComentario, sequenciaComentario];
+    this.idSequenciaComentarioAtual = sequenciaComentario.id;
     this.atualizarAlertaGlobalComentarios();
     this._tabsDireita?.show('comentarios');
+    this.rolarParaSequenciaComentario(sequenciaComentario.id);
+    this.selecionarComentarioTextoRicoAposCriacao(sequenciaComentario.id, this.editorComentarioAtual);
     if (this.isModoMobileOuTablet()) {
       this.abrirModalListaComentarios();
     }
+  }
+
+  private selecionarComentarioTextoRicoAposCriacao(idSequenciaComentario: string, editor: any): void {
+    const selecionar = (): void => {
+      editor?.posicionarCursorComentario?.(idSequenciaComentario);
+      this.idSequenciaComentarioAtual = idSequenciaComentario;
+      this.rolarParaSequenciaComentario(idSequenciaComentario);
+    };
+
+    window.requestAnimationFrame(() => {
+      selecionar();
+      setTimeout(selecionar, 80);
+    });
   }
 
   private adicionarComentarioArticulacaoSelecionado(textoComentario?: string): void {

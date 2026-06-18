@@ -1425,28 +1425,52 @@ export class EditorComponent extends connect(rootStore)(LitElement) {
     }
 
     this.centralizarLinhaNoEditor(linha);
-    window.requestAnimationFrame(() => this.centralizarLinhaNoEditor(linha));
+    this.agendarCentralizacaoLinhaNoEditor(linha);
     return true;
   }
 
-  private centralizarLinhaNoEditor(linha: EtaContainerTable, behavior: ScrollBehavior = 'smooth'): void {
+  private agendarCentralizacaoLinhaNoEditor(linha: EtaContainerTable): void {
+    const centralizar = (): void => {
+      if ((linha.domNode as HTMLElement | undefined)?.isConnected) {
+        this.centralizarLinhaNoEditor(linha);
+      }
+    };
+
+    setTimeout(centralizar, 0);
+    window.requestAnimationFrame(() => {
+      centralizar();
+      window.requestAnimationFrame(centralizar);
+    });
+    setTimeout(centralizar, 80);
+  }
+
+  private centralizarLinhaNoEditor(linha: EtaContainerTable, behavior: ScrollBehavior = 'smooth'): boolean {
     const linhaElement = linha.domNode as HTMLElement;
+    if (!linhaElement?.isConnected) {
+      return false;
+    }
+
     const containerRolagem = this.getContainerRolagemLinha(linhaElement);
 
     if (!containerRolagem) {
       linhaElement.scrollIntoView?.({ behavior, block: 'center', inline: 'nearest' });
-      return;
+      return true;
+    }
+
+    if (!containerRolagem.clientHeight) {
+      return false;
     }
 
     const linhaRect = linhaElement.getBoundingClientRect();
     const containerRect = containerRolagem.getBoundingClientRect();
     const topAtualLinhaNoContainer = linhaRect.top - containerRect.top + containerRolagem.scrollTop;
-    const topCentralizado = topAtualLinhaNoContainer - (containerRolagem.clientHeight - linhaRect.height) / 2;
+    const topCentralizado = topAtualLinhaNoContainer + linhaRect.height / 2 - containerRolagem.clientHeight * 0.25;
 
     containerRolagem.scrollTo({
       top: Math.max(0, topCentralizado),
       behavior,
     });
+    return true;
   }
 
   private getContainerRolagemLinha(elemento: HTMLElement): HTMLElement | undefined {

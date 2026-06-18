@@ -728,21 +728,56 @@ export const editorStyles = html`
     }
 
     .blot__opcoes_comentario {
-      background: url('assets/icons/chat-left-text.svg') no-repeat center, white;
-      background-size: 0.8rem;
+      padding: 0;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      display: inline-block;
+      position: relative;
     }
 
     #lx-eta-editor .ql-editor .blot__opcoes_comentario:focus,
     #lx-eta-editor .ql-editor .blot__opcoes_comentario:focus-visible,
     #lx-eta-editor .ql-editor .blot__opcoes_comentario:active {
       outline: 0;
-      border: 1px solid black;
+      border: 0;
       -webkit-box-shadow: none;
       box-shadow: none;
     }
 
-    .blot__opcoes_diff:hover,
-    .blot__opcoes_comentario:hover {
+    .blot__opcoes_comentario::before,
+    .blot__opcoes_comentario::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 1rem;
+      height: 1rem;
+      display: block;
+      pointer-events: none;
+      transform: translate(-50%, -50%);
+    }
+
+    .blot__opcoes_comentario::before {
+      background-color: #fff8c5;
+      -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M2 1a1 1 0 0 0-1 1v11.586l2-2A2 2 0 0 1 4.414 11H14a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H2z'/%3E%3C/svg%3E")
+        center / contain no-repeat;
+      mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M2 1a1 1 0 0 0-1 1v11.586l2-2A2 2 0 0 1 4.414 11H14a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H2z'/%3E%3C/svg%3E")
+        center / contain no-repeat;
+    }
+
+    .blot__opcoes_comentario::after {
+      background-color: #111827;
+      -webkit-mask: url('assets/icons/chat-left-text.svg') center / contain no-repeat;
+      mask: url('assets/icons/chat-left-text.svg') center / contain no-repeat;
+    }
+
+    .blot__opcoes_comentario:hover::before,
+    .container__elemento--ativo .blot__opcoes_comentario::before {
+      background-color: #fdd663;
+    }
+
+    .blot__opcoes_diff:hover {
       filter: invert(100%);
     }
 
@@ -767,7 +802,6 @@ export const editorStyles = html`
 
     .blot__revisao_aceitar:focus,
     .blot__opcoes_diff:focus,
-    .blot__opcoes_comentario:focus,
     .blot__revisao_recusar:focus {
       outline: 1px solid #000;
       border: 1px solid #000;
