@@ -225,6 +225,7 @@ const criarNovaCabecaDeAlteracao = (state: any, atual: Dispositivo, posicao: str
   const cabecaAlteracao = getDispositivoCabecaAlteracao(atual);
   const pos = cabecaAlteracao.pai!.indexOf(cabecaAlteracao) + (posicao === 'antes' ? 0 : 1);
   const novo = criaDispositivoCabecaAlteracao(tipo, cabecaAlteracao.pai! as Alteracoes, undefined, pos);
+  (novo.situacao as DispositivoAdicionado).tipoEmenda = state.modo;
   novo.rotulo = dadosComplementares.rotulo ?? novo.rotulo;
   novo.uuid = dadosComplementares.uuid ?? novo.uuid;
   novo.texto = dadosComplementares.texto ?? novo.texto ?? '';
