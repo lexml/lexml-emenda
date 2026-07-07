@@ -47,6 +47,7 @@ export class LexmlEtaComponent extends connect(rootStore)(LitElement) {
     if (projetoNorma) {
       this.projetoNorma = projetoNorma;
     }
+    this.jaAplicouEmenda = false;
     this.loadProjetoNorma(preparaAberturaEmenda, params);
     document.querySelector('lexml-eta-articulacao')!['style'].display = 'block';
   }
@@ -119,10 +120,17 @@ export class LexmlEtaComponent extends connect(rootStore)(LitElement) {
   }
 
   private _timerLoadEmenda = 0;
+  // Evita reaplicação duplicada de dispositivosEmenda ao carregar uma emend
+  private jaAplicouEmenda = false;
+
   private loadEmenda(): void {
     if (this.dispositivosEmenda) {
+      if (this.jaAplicouEmenda) {
+        return;
+      }
       clearInterval(this._timerLoadEmenda);
       this._timerLoadEmenda = window.setTimeout(() => {
+        this.jaAplicouEmenda = true;
         rootStore.dispatch(aplicarAlteracoesEmendaAction.execute(this.dispositivosEmenda!, this.revisoes));
       }, 1000);
     }
