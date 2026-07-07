@@ -20,7 +20,7 @@ import {
 import { DispositivoAdicionado } from '../../../model/lexml/situacao/dispositivoAdicionado';
 import { DispositivoModificado } from '../../../model/lexml/situacao/dispositivoModificado';
 import { DispositivoSuprimido } from '../../../model/lexml/situacao/dispositivoSuprimido';
-import { buildId } from '../../../model/lexml/util/idUtil';
+import { buildId, updateIdDispositivoAndFilhos } from '../../../model/lexml/util/idUtil';
 import { Revisao, RevisaoElemento } from '../../../model/revisao/revisao';
 import { Counter } from '../../../util/counter';
 import { State, StateEvent, StateType } from '../../state';
@@ -143,6 +143,9 @@ const processaDispositivosAdicionados = (state: any, alteracoesEmenda: Dispositi
       eventos.push(criaEventoElementosIncluidos(state, da));
     }
   }
+
+  state.articulacao.renumeraArtigos();
+  updateIdDispositivoAndFilhos(state.articulacao);
 
   return eventos;
 };
