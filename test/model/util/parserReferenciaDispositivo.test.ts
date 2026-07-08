@@ -1,7 +1,9 @@
 import { expect } from '@open-wc/testing';
 import { Articulacao, Artigo } from '../../../src/model/dispositivo/dispositivo';
+import { ClassificacaoDocumento } from '../../../src/model/documento/classificacao';
 import { createArticulacao, criaDispositivo } from '../../../src/model/lexml/dispositivo/dispositivoLexmlFactory';
 import { buildDispositivosAssistente, buildReferencia, identificaReferencias } from '../../../src/model/lexml/numeracao/parserReferenciaDispositivo';
+import { DispositivoAdicionado } from '../../../src/model/lexml/situacao/dispositivoAdicionado';
 import { TipoDispositivo } from '../../../src/model/lexml/tipo/tipoDispositivo';
 import { ReferenciaDispositivoParser } from './../../../src/model/lexml/numeracao/parserReferenciaDispositivo';
 
@@ -495,6 +497,15 @@ describe('Parser de texto contendo referência de dispositivo', () => {
       expect(parser.referencias[3].numero).to.be.equal('1-aa-aa-aa');
       expect(parser.referencias[4].tipo).to.be.equal(TipoDispositivo.artigo);
       expect(parser.referencias[4].numero).to.be.equal('1-a-a-a');
+    });
+
+    it('Deveria propagar o modo (tipoEmenda) informado para todos os dispositivos filhos gerados', () => {
+      const texto = 'inciso I § 1º Art. 2º';
+      const dispositivo = buildDispositivosAssistente(texto, artigo, ClassificacaoDocumento.EMENDA_ARTIGO_ONDE_COUBER);
+
+      expect((dispositivo.situacao as DispositivoAdicionado).tipoEmenda).to.be.equal(ClassificacaoDocumento.EMENDA_ARTIGO_ONDE_COUBER);
+      expect((dispositivo.filhos[0].situacao as DispositivoAdicionado).tipoEmenda).to.be.equal(ClassificacaoDocumento.EMENDA_ARTIGO_ONDE_COUBER);
+      expect((dispositivo.filhos[0].filhos[0].situacao as DispositivoAdicionado).tipoEmenda).to.be.equal(ClassificacaoDocumento.EMENDA_ARTIGO_ONDE_COUBER);
     });
 
     it('Referências inválidas', () => {
