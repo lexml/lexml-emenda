@@ -1,6 +1,6 @@
 {
   "name": "@lexml/lexml-emenda",
-  "version": "1.8.10",
+  "version": "1.8.11",
   "description": "Webcomponent lexml-emenda following open-wc recommendations",
   "author": "lexml-emenda",
   "license": "GPL-2.0-only",

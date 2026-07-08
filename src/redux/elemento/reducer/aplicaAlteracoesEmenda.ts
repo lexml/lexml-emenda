@@ -20,7 +20,7 @@ import {
 import { DispositivoAdicionado } from '../../../model/lexml/situacao/dispositivoAdicionado';
 import { DispositivoModificado } from '../../../model/lexml/situacao/dispositivoModificado';
 import { DispositivoSuprimido } from '../../../model/lexml/situacao/dispositivoSuprimido';
-import { buildId } from '../../../model/lexml/util/idUtil';
+import { buildId, updateIdDispositivoAndFilhos } from '../../../model/lexml/util/idUtil';
 import { Revisao, RevisaoElemento } from '../../../model/revisao/revisao';
 import { Counter } from '../../../util/counter';
 import { State, StateEvent, StateType } from '../../state';
@@ -144,6 +144,9 @@ const processaDispositivosAdicionados = (state: any, alteracoesEmenda: Dispositi
     }
   }
 
+  state.articulacao.renumeraArtigos();
+  updateIdDispositivoAndFilhos(state.articulacao);
+
   return eventos;
 };
 
@@ -185,7 +188,7 @@ const criaEventosParaDispositivoAgrupador = (state: any, dea: DispositivoEmendaA
 
     const novo = getDispositivoFromElemento(articulacao, novoAgrupador)!;
 
-    ajustaAtributosDispositivoAdicionado(novo, dea, ClassificacaoDocumento.EMENDA);
+    ajustaAtributosDispositivoAdicionado(novo, dea, state.modo);
 
     elementosIncluidos.length = 0;
     elementosIncluidos.push(createElemento(novo));

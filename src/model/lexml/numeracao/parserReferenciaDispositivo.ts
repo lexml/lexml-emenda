@@ -37,11 +37,11 @@ const processaFilhos = (dispositivo: Dispositivo, referencias: ReferenciaDisposi
       referencia.numero && parent.createNumeroFromRotulo(referencia.numero);
       parent.createRotulo(parent);
     }
+    parent.isDispositivoAlteracao = true;
+    parent.situacao = new DispositivoAdicionado();
     if (modo) {
       (parent.situacao as DispositivoAdicionado).tipoEmenda = modo;
     }
-    parent.isDispositivoAlteracao = true;
-    parent.situacao = new DispositivoAdicionado();
     (parent.situacao as DispositivoAdicionado).existeNaNormaAlterada = true;
     parent.id = buildId(parent);
 
