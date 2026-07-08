@@ -695,7 +695,7 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
       this.ajustarAltura();
     });
 
-    const badgeAtalhos = this._tabsDireita?.querySelector('#badgeAtalhos');
+    const badgeAtalhos = this._tabsDireita?.querySelector('sl-tab[panel="atalhos"] #badgeAtalhos') as any;
     if (badgeAtalhos) {
       const naoPulsarBadgeAtalhos = localStorage.getItem('naoPulsarBadgeAtalhos');
       if (!naoPulsarBadgeAtalhos) {
@@ -707,10 +707,10 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
     this._tabsDireita?.addEventListener('sl-tab-show', (event: any) => {
       const tabName = event.detail.name;
       if (tabName === 'atalhos') {
-        const badge = (event.target as Element).querySelector('sl-badge');
+        const badge = (event.target as Element).querySelector('sl-tab[panel="atalhos"] sl-badge') as any;
         if (badge) {
           badge.pulse = false;
-          badge.setAttribute('variant', 'primmay');
+          badge.setAttribute('variant', 'primary');
         }
         localStorage.setItem('naoPulsarBadgeAtalhos', 'true');
       }
@@ -943,6 +943,7 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
           margin-top: -4px;
         }
 
+        #badgeNotas::part(base),
         #badgeAtalhos::part(base) {
           height: 16px;
           margin-top: 2px;
@@ -950,6 +951,7 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
           background-color: transparent;
           color: var(--sl-color-neutral-600);
         }
+        sl-tab[panel='notas'][active] #badgeNotas::part(base),
         sl-tab[panel='atalhos'][active] #badgeAtalhos::part(base) {
           color: var(--sl-color-primary-600);
         }
@@ -1128,7 +1130,7 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
             ${this.tabIsVisible('notas')
               ? html`
                   <sl-tab slot="nav" panel="notas" title="Notas de rodapé">
-                    <sl-badge variant="primary" id="badgeAtalhos" pill>
+                    <sl-badge variant="primary" id="badgeNotas" pill>
                       <sl-icon name="footnote"></sl-icon>
                       Notas
                     </sl-badge>
@@ -1235,20 +1237,6 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
     if (!tab) return;
 
     this._tabsDireita?.show('notas');
-
-    if (tabName === 'notas') {
-      const badgeElement = tab?.querySelector('sl-badge');
-      if (!badgeElement) return;
-
-      if (!tab.hasAttribute('active')) {
-        if (tabName === 'notas') {
-          badgeElement.setAttribute('pulse', '');
-          setTimeout(() => {
-            badgeElement.removeAttribute('pulse');
-          }, 4000);
-        }
-      }
-    }
   }
 
   localizarNotaRodape(idNotaRodape: any): void {

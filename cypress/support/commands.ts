@@ -488,7 +488,7 @@ const fnChecarComandoCitacao = (emenda: any): void => {
 const fnChecarDadosNotasRodape = (emenda: Emenda): void => {
   const textoNotaRodape = emenda.notasRodape[0]?.texto;
   if (textoNotaRodape) {
-    cy.get('#sl-tab-14 > #badgeAtalhos').click();
+    cy.get('sl-tab[panel="notas"]').click();
     cy.get('.notas-texto > p').contains(textoNotaRodape);
   }
 };
