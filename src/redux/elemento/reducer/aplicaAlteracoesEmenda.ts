@@ -58,7 +58,7 @@ export const aplicaAlteracoesEmenda = (state: any, action: any): State => {
 
   const eventos = new Eventos();
 
-  if (action.alteracoesEmenda.dispositivosSuprimidos) {
+  if (action.alteracoesEmenda.dispositivosSuprimidos?.length) {
     eventos.add(StateType.ElementoSuprimido, []);
 
     action.alteracoesEmenda.dispositivosSuprimidos.forEach(dispositivo => {
@@ -73,7 +73,7 @@ export const aplicaAlteracoesEmenda = (state: any, action: any): State => {
     });
   }
 
-  if (action.alteracoesEmenda.dispositivosModificados) {
+  if (action.alteracoesEmenda.dispositivosModificados?.length) {
     eventos.add(StateType.ElementoModificado, []);
 
     action.alteracoesEmenda.dispositivosModificados.forEach(dispositivo => {
@@ -87,7 +87,7 @@ export const aplicaAlteracoesEmenda = (state: any, action: any): State => {
     });
   }
 
-  if (action.alteracoesEmenda.dispositivosAdicionados) {
+  if (action.alteracoesEmenda.dispositivosAdicionados?.length) {
     eventos.eventos.push(...processaDispositivosAdicionados(state, action.alteracoesEmenda));
   }
 
