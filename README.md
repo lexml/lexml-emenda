@@ -55,6 +55,12 @@ Trata-se de uma proposta inicial, a ser discutida com todos os interessados em s
 
 Somente a partir do segundo semestre de 2022
 
+## Dependência do Quill
+
+O `@lexml/lexml-emenda` incorpora uma cópia privada de `quill@1.3.7` durante o build. A aplicação consumidora não precisa instalar nem fornecer o Quill para usar a biblioteca.
+
+Caso a aplicação também utilize Quill, sua própria instalação permanece independente: o código e o registry do editor LexML não são deduplicados nem compartilhados com ela.
+
 ## Executando o demo localmente
 
 Para testar, basta seguir os seguintes passos:
@@ -116,4 +122,3 @@ Este componente segue as recomendações do [open-wc](https://github.com/open-wc
 
 ## Contribua com o projeto
 O projeto está apenas iniciando. Toda ajuda é bem-vinda!
-

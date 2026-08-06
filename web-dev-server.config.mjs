@@ -1,4 +1,5 @@
 // import { hmrPlugin, presets } from '@open-wc/dev-server-hmr';
+import { createPrivateQuillDevPlugin } from './private-quill.mjs';
 
 /** Use Hot Module replacement by adding --hmr to the start command */
 
@@ -20,7 +21,7 @@ const middlewares = [
     target: 'https://www6ghml.senado.leg.br/',
     rewrite: path => path.replace(/^\/api/, '/editor-emendas/api'),
     logs: true,
-    changeOrigin: true
+    changeOrigin: true,
   }),
 ];
 cacheEnabled && middlewares.push(cacheMiddleware());
@@ -49,6 +50,7 @@ export default /** @type {import('@web/dev-server').DevServerConfig} */ ({
   middleware: middlewares,
 
   plugins: [
+    createPrivateQuillDevPlugin(),
     /** Use Hot Module Replacement by uncommenting. Requires @open-wc/dev-server-hmr plugin */
     // hmr && hmrPlugin({ exclude: ['**/*/node_modules/**/*'], presets: [presets.litElement] }),
   ],

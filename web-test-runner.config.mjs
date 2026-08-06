@@ -1,4 +1,5 @@
 // import { playwrightLauncher } from '@web/test-runner-playwright';
+import { createPrivateQuillDevPlugin } from './private-quill.mjs';
 
 export default /** @type {import("@web/test-runner").TestRunnerConfig} */ ({
   files: [
@@ -13,6 +14,10 @@ export default /** @type {import("@web/test-runner").TestRunnerConfig} */ ({
     // 'out-tsc/test/componente/editor-texto-rico/**/*.test.js',
   ],
   nodeResolve: true,
+  plugins: [createPrivateQuillDevPlugin()],
+  coverageConfig: {
+    exclude: ['**/__lexml/**'],
+  },
 
   /** Compile JS for older browsers. Requires @web/dev-server-esbuild plugin */
   // esbuildTarget: 'auto',

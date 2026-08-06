@@ -3,6 +3,7 @@
 /* eslint-disable eqeqeq */
 
 import { generateUUID } from '../../util/uuid';
+import Quill from '../../internal/quill/private-quill';
 
 /* eslint-disable prefer-const */
 const Delta = Quill.import('delta');
@@ -200,13 +201,6 @@ class ModuloRevisao extends Module {
   tableModule;
   tableTrick;
   isAbrindoTexto = false;
-
-  static register() {
-    Quill.register('modules/keyboard', CustomKeyboard, true);
-    Quill.register('modules/clipboard', CustomClipboard, true);
-    Quill.register(InsBlot, true);
-    Quill.register(DelBlot, true);
-  }
 
   constructor(quill, options) {
     super(quill, options);
@@ -733,11 +727,4 @@ class ModuloRevisao extends Module {
   }
 }
 
-// --------------------------------------------------------------------------------------------------------------------
-// --------------------------------------------------------------------------------------------------------------------
-
-Quill.register('modules/revisao', ModuloRevisao, true);
-
-// --------------------------------------------------------------------------------------------------------------------
-
-export { ModuloRevisao };
+export { CustomClipboard, CustomKeyboard, DelBlot, InsBlot, ModuloRevisao };

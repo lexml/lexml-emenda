@@ -187,8 +187,8 @@ export const getDispositivoAnteriorNaSequenciaDeLeitura = (disp: Dispositivo, ac
 // Retorna o dispositivo imediatamente posterior na sequência de leitura ou primeiro dispositivo posterior aceito por "accept" na sequência de leitura
 // Considera caput. Não considera incisos de caput como filhos de artigo.
 export const getDispositivoPosteriorNaSequenciaDeLeitura = (disp: Dispositivo, accept?: (d: Dispositivo) => boolean, aPartirDe?: Dispositivo): Dispositivo | undefined => {
-  console.log(`getDispositivoPosteriorNaSequenciaDeLeitura(${disp.id}, x, ${aPartirDe?.id})`);
-  console.log(accept);
+  //console.log(`getDispositivoPosteriorNaSequenciaDeLeitura(${disp.id}, x, ${aPartirDe?.id})`);
+  //console.log(accept);
   if (!disp) {
     return undefined;
   }

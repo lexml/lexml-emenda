@@ -1,12 +1,7 @@
 import { quillSnowStyles } from '../../assets/css/quill.snow.css';
-import { EstiloTextoClass } from './estilos-texto';
-import { MarginBottomClass } from './margin-bottom';
+import Quill from '../../internal/quill/private-quill';
 import { NOTA_RODAPE_INPUT_EVENT } from './notaRodape';
 import { QuillUtil } from './quill-util';
-import { NoIndentClass } from './text-indent';
-
-const DefaultKeyboardModule = Quill.import('modules/keyboard');
-const DefaultClipboardModule = Quill.import('modules/clipboard');
 
 export class NotaRodapeModal {
   private modalElement: HTMLElement;
@@ -244,11 +239,6 @@ export class NotaRodapeModal {
     this.shadowRoot.querySelector('.modal-save-button')?.addEventListener('click', this.save.bind(this));
 
     const quillContainer = this.shadowRoot.querySelector('#editor-lexml-emenda-nota-rodape-container') as HTMLElement;
-    Quill.register('modules/keyboard', DefaultKeyboardModule, true);
-    Quill.register('modules/clipboard', DefaultClipboardModule, true);
-    Quill.register('formats/estilo-texto', EstiloTextoClass, true);
-    Quill.register('formats/text-indent', NoIndentClass, true);
-    Quill.register('formats/margin-bottom', MarginBottomClass, true);
 
     this.quill = new Quill(quillContainer, {
       formats: ['bold', 'italic', 'underline', 'link'],

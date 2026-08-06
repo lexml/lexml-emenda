@@ -1,6 +1,7 @@
 import { EtaBlot } from './eta-blot';
+import PrivateQuill from '../../internal/quill/private-quill';
 
-const Container = Quill.import('blots/container');
+const Container = PrivateQuill.import('blots/container');
 
 export interface IContainerEta {
   get instanceBlotName(): string;

@@ -9,6 +9,7 @@ import { DispositivoOriginal } from '../../situacao/dispositivoOriginal';
 import { ProjetoNorma } from '../projetoNorma';
 import { getTipo } from '../urnUtil';
 import { isArtigo } from './../../../dispositivo/tipo';
+import PrivateQuill from '../../../../internal/quill/private-quill';
 
 export let isEmendamento = false;
 let ultimoDispositivoCriado: Dispositivo;
@@ -19,7 +20,7 @@ let ultimoDispositivoCriado: Dispositivo;
 const ajustarTextosParaQuill = (projetoNorma: ProjetoNorma): void => {
   if (window.process.env.testMode) return;
 
-  const fnAjustaFormatoQuill = (texto: string, container: any, quill: Quill): string => {
+  const fnAjustaFormatoQuill = (texto: string, container: any, quill: InstanceType<typeof PrivateQuill>): string => {
     const regexMatchTagsBoldOuItalicContendoTagAnchorDentro = /<(b|i)>(?:(?!(<\/\1>)).)*<a[^>]*>.*<\/a>.*<\/\1>/gi;
     if (texto?.match(regexMatchTagsBoldOuItalicContendoTagAnchorDentro)) {
       quill.setContents(quill.clipboard.convert(texto));
@@ -29,7 +30,7 @@ const ajustarTextosParaQuill = (projetoNorma: ProjetoNorma): void => {
   };
 
   const tempContainer = document.createElement('div');
-  const tempQuill = new Quill(tempContainer, {});
+  const tempQuill = new PrivateQuill(tempContainer, {});
 
   if (projetoNorma.ementa) {
     projetoNorma.ementa.texto = fnAjustaFormatoQuill(projetoNorma.ementa.texto, tempContainer, tempQuill);
