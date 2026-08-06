@@ -8,7 +8,7 @@ let substituicaoTermoComponent: SubstituicaoTermoComponent;
 
 describe('Testando lexml-substituicao-termo (EditorTextoRicoComponent)', () => {
   beforeEach(async function () {
-    substituicaoTermoComponent = await fixture<SubstituicaoTermoComponent>(html`<lexml-substituicao-termo></lexml-substituicao-termo>`);
+    substituicaoTermoComponent = await fixture<SubstituicaoTermoComponent>(html`<lexml-emenda-substituicao-termo></lexml-emenda-substituicao-termo>`);
   });
 
   it('Deveria exibir o componente', () => {
@@ -20,8 +20,13 @@ describe('Testando lexml-substituicao-termo (EditorTextoRicoComponent)', () => {
   describe('Testando mudança no tipo de termo a ser substituído', () => {
     it('Selecionando tipo "Expressão"', async () => {
       const el = substituicaoTermoComponent.elTipoSubstituicaoTermo?.querySelector('sl-radio[value="Expressão"]') as any;
+      const elPalavra = substituicaoTermoComponent.elTipoSubstituicaoTermo?.querySelector('sl-radio[value="Palavra"]') as any;
+      elPalavra.click();
+      await elPalavra.updateComplete;
+
+      const slChange = oneEvent(el, 'sl-change');
       el.click();
-      const ev = await oneEvent(el, 'sl-change');
+      const ev = await slChange;
       expect(ev).to.be.exist;
       expect(el.checked).to.be.true;
       expect(substituicaoTermoComponent.elTipoSubstituicaoTermo.querySelectorAll('sl-radio:not([checked])').length).to.be.equal(2);
@@ -35,8 +40,9 @@ describe('Testando lexml-substituicao-termo (EditorTextoRicoComponent)', () => {
 
     it('Selecionando tipo "Palavra"', async () => {
       const el = substituicaoTermoComponent.elTipoSubstituicaoTermo?.querySelector('sl-radio[value="Palavra"]') as any;
+      const slChange = oneEvent(el, 'sl-change');
       el.click();
-      const ev = await oneEvent(el, 'sl-change');
+      const ev = await slChange;
       expect(ev).to.be.exist;
       expect(el.checked).to.be.true;
       expect(substituicaoTermoComponent.elTipoSubstituicaoTermo.querySelectorAll('sl-radio:not([checked])').length).to.be.equal(2);
@@ -50,8 +56,9 @@ describe('Testando lexml-substituicao-termo (EditorTextoRicoComponent)', () => {
 
     it('Selecionando tipo "Número"', async () => {
       const el = substituicaoTermoComponent.elTipoSubstituicaoTermo?.querySelector('sl-radio[value="Número"]') as any;
+      const slChange = oneEvent(el, 'sl-change');
       el.click();
-      const ev = await oneEvent(el, 'sl-change');
+      const ev = await slChange;
       expect(ev).to.be.exist;
       expect(el.checked).to.be.true;
       expect(substituicaoTermoComponent.elTipoSubstituicaoTermo.querySelectorAll('sl-radio:not([checked])').length).to.be.equal(2);
@@ -100,8 +107,9 @@ describe('Testando lexml-substituicao-termo (EditorTextoRicoComponent)', () => {
   describe('Testando eventos do componente', () => {
     it('Deveria emitir evento "onchange" ao alterar o tipo de termo a ser substituído', async () => {
       const el = substituicaoTermoComponent.elTipoSubstituicaoTermo?.querySelector('sl-radio[value="Palavra"]') as any;
+      const slChange = oneEvent(substituicaoTermoComponent.elTipoSubstituicaoTermo, 'sl-change');
       el.click();
-      const ev = await oneEvent(substituicaoTermoComponent.elTipoSubstituicaoTermo, 'sl-change');
+      const ev = await slChange;
       expect(ev).to.be.exist;
     });
 
