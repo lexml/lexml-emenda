@@ -27,7 +27,8 @@ module.exports = {
   rules: {
     eqeqeq: 'error',
     'no-unused-vars': 'off',
-    '@typescript-eslint/no-unused-vars': ['error'],
+    '@typescript-eslint/no-unused-vars': ['error', { caughtErrors: 'none' }],
+    '@typescript-eslint/no-unused-expressions': ['error', { allowShortCircuit: true, allowTernary: true }],
     'no-extra-semi': 'error',
     semi: 'error',
     'no-trailing-spaces': 'error',

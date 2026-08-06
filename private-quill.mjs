@@ -34,7 +34,7 @@ export const injectPrivateQuillImport = (code, moduleSpecifier = 'quill/dist/qui
 };
 
 export const createPrivateQuillDevPlugin = () => {
-  const quillUmdPath = fileURLToPath(new URL('../node_modules/quill/dist/quill.js', import.meta.url));
+  const quillUmdPath = fileURLToPath(new URL('./node_modules/quill/dist/quill.js', import.meta.url));
   const privateQuillRuntime = wrapQuillUmdAsEsm(readFileSync(quillUmdPath, 'utf8'));
 
   return {

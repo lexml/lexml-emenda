@@ -381,7 +381,7 @@ export class EtaKeyboard extends Keyboard {
   }
 
   private onTeclaEnd(ev: KeyboardEvent): void {
-    const index: number = this.quill.getIndex(this.quill.getUltimaLinha().blotConteudo) + this.quill.getUltimaLinha().blotConteudo?.tamanho ?? 0;
+    const index: number = this.quill.getIndex(this.quill.getUltimaLinha().blotConteudo) + (this.quill.getUltimaLinha().blotConteudo?.tamanho ?? 0);
     this.quill.setIndex(index, PrivateQuill.sources.USER);
     this.quill.scroll.domNode.scrollTo(0, this.quill.scroll.domNode.scrollHeight);
     cancelarPropagacaoDoEvento(ev);

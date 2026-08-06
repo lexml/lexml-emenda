@@ -8,7 +8,6 @@ import { SlButton, SlInput } from '@shoelace-style/shoelace';
 import { html, LitElement, TemplateResult } from 'lit';
 import { customElement, property, query } from 'lit/decorators.js';
 import { connect } from 'pwa-helpers';
-import { configurePrivateQuill } from '../../internal/quill/configure-private-quill';
 import PrivateQuill from '../../internal/quill/private-quill';
 import { QuillOptions, QuillRange, QuillSelectionChangeHandler, QuillSource } from '../../internal/quill/quill-types';
 import { CmdEmdUtil } from '../../emenda/comando-emenda-util';
@@ -394,7 +393,7 @@ export class EditorComponent extends connect(rootStore)(LitElement) {
     const blotConteudo: EtaBlotConteudo = linha.blotConteudo;
 
     const indexInicio: number = this.quill.inicioConteudoAtual ?? 0;
-    const indexFim: number = indexInicio + blotConteudo!.tamanho ?? 0;
+    const indexFim: number = indexInicio + blotConteudo.tamanho;
     let textoLinha = '';
     let textoNovaLinha = '';
 
@@ -1194,7 +1193,6 @@ export class EditorComponent extends connect(rootStore)(LitElement) {
     const editorHtml: HTMLElement = this.getHtmlElement('lx-eta-editor');
     const bufferHtml: HTMLElement = this.getHtmlElement('lx-eta-buffer');
 
-    configurePrivateQuill();
     this._quill = new EtaQuill(editorHtml, bufferHtml, op);
     this.quill.on('selection-change', this.onSelectionChange);
     this.inscricoes.push(this.quill.keyboard.operacaoTecladoInvalida.subscribe(this.onOperacaoInvalida.bind(this)));

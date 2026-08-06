@@ -1,7 +1,6 @@
 import { html, LitElement, PropertyValues, TemplateResult } from 'lit';
 import { customElement, property, query } from 'lit/decorators.js';
 import Quill from '../../internal/quill/private-quill';
-import { configurePrivateQuill } from '../../internal/quill/configure-private-quill';
 import { iconeMarginBottom, iconeTextIndent, negrito, sublinhado, iconeNotaDeRodape } from '../../../assets/icons/icons';
 import { Observable } from '../../util/observable';
 import { rootStore } from '../../redux/store';
@@ -253,8 +252,6 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
   init = (): void => {
     const quillContainer = this.querySelector(`#${this.id}-inner`) as HTMLElement;
     if (quillContainer) {
-      configurePrivateQuill();
-
       const customToolbarOptions = [...toolbarOptions];
       const customFormatsOptions = [...formatsOptions];
       if (this.modo === Modo.JUSTIFICATIVA) {
@@ -545,8 +542,6 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
     if (!this.quill || !this.quill.root) {
       return;
     }
-
-    this;
 
     this.texto = texto;
 

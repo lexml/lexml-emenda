@@ -14,6 +14,7 @@ export default /** @type {import("@web/test-runner").TestRunnerConfig} */ ({
     // 'out-tsc/test/componente/editor-texto-rico/**/*.test.js',
   ],
   nodeResolve: true,
+  browserStartTimeout: 120000,
   plugins: [createPrivateQuillDevPlugin()],
   coverageConfig: {
     exclude: ['**/__lexml/**'],
