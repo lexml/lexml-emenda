@@ -1,7 +1,9 @@
+import Quill from '../../internal/quill/private-quill';
+
 const Delta = Quill.import('delta');
 
 class ModuloAspasCurvas {
-  quill: Quill;
+  quill: InstanceType<typeof Quill>;
   options: any;
   enabled = true;
 

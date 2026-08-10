@@ -3,6 +3,7 @@
 /* eslint-disable eqeqeq */
 /* eslint-disable prefer-const */
 import { decodeHtml, encodeHtml } from '../../util/string-util';
+import Quill from '../../internal/quill/private-quill';
 import { NotaRodapeModal } from './nota-rodape-modal';
 import { NOTA_RODAPE_CHANGE_EVENT, NOTA_RODAPE_INPUT_EVENT, NOTA_RODAPE_REMOVE_EVENT, NotaRodape } from './notaRodape';
 
@@ -84,13 +85,6 @@ class ModuloNotaRodape extends Module {
     //     this.quill.root.innerHTML = this.ajustarConteudoTagsNotaRodape(this.quill.root.innerHTML);
     //   }, 0);
     // }
-  }
-
-  static register() {
-    Quill.register(NotaRodapeBlot);
-    Quill.register(IdNotaRodapeAttribute);
-    Quill.register(NumeroAttribute);
-    Quill.register(TextoAttribute);
   }
 
   constructor(quill, options) {
@@ -297,4 +291,4 @@ class ModuloNotaRodape extends Module {
   }
 }
 
-export { ModuloNotaRodape };
+export { IdNotaRodapeAttribute, ModuloNotaRodape, NotaRodapeBlot, NumeroAttribute, TextoAttribute };

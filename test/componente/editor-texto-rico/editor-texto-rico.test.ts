@@ -7,6 +7,8 @@ import { atualizarUsuarioAction } from '../../../src/model/lexml/acao/atualizarU
 import { ModoEdicaoEmenda } from '../../../src/model/emenda/emenda';
 import { atualizaRevisaoTextoLivre } from '../../../src/redux/elemento/reducer/atualizaRevisaoTextoLivre';
 import { Modo } from '../../../src/redux/elemento/enum/enumUtil';
+import PrivateQuill from '../../../src/internal/quill/private-quill';
+import { configurePrivateQuill } from '../../../src/internal/quill/configure-private-quill';
 
 let editorTextoRico: EditorTextoRicoComponent;
 
@@ -37,6 +39,8 @@ const htmlEditor =
 
 const htmlEmenda =
   '<p>Parágrafo alinhado à esquerda.</p><p class="align-center">Parágrafo centralizado.</p><p class="align-right">Parágrafo alinhado à direita.</p><p class="align-justify">Parágrafo justificado.</p><table table_id="h2tap0hfojd" border="1"><tbody><tr row_id="ghi2y63a2wp"><td class="td-q" table_id="h2tap0hfojd" row_id="ghi2y63a2wp" cell_id="o2xtredkgr"><p>1</p></td><td class="td-q" table_id="h2tap0hfojd" row_id="ghi2y63a2wp" cell_id="y3kpm6x0qp8"><p>2</p></td><td class="td-q" table_id="h2tap0hfojd" row_id="ghi2y63a2wp" cell_id="mq6yrrboj9n"><p>3</p></td><td class="td-q" table_id="h2tap0hfojd" row_id="ghi2y63a2wp" cell_id="0xai4ouu7g8" colspan="2" rowspan="1"><p>4 5</p></td></tr><tr row_id="u6x50lx471h"><td class="td-q" table_id="h2tap0hfojd" row_id="u6x50lx471h" cell_id="u3bfb5o0u1q"><p>6</p></td><td class="td-q" table_id="h2tap0hfojd" row_id="u6x50lx471h" cell_id="gun68mala0v" colspan="1" rowspan="2"><p>7</p><p>12</p></td><td class="td-q" table_id="h2tap0hfojd" row_id="u6x50lx471h" cell_id="1347b2f1wgc"><p>8</p></td><td class="td-q" table_id="h2tap0hfojd" row_id="u6x50lx471h" cell_id="897bot8bdtq"><p>9</p></td><td class="td-q" table_id="h2tap0hfojd" row_id="u6x50lx471h" cell_id="3wis8gkd39v"><p>10</p></td></tr><tr row_id="tf6pmpb0u8"><td class="td-q" table_id="h2tap0hfojd" row_id="tf6pmpb0u8" cell_id="2zcd2xzlgm4"><p>11</p></td><td class="td-q" table_id="h2tap0hfojd" row_id="tf6pmpb0u8" cell_id="gctz0gcm4no"><p>13</p></td><td class="td-q" table_id="h2tap0hfojd" row_id="tf6pmpb0u8" cell_id="yvdp5cr7kb"><p>14</p></td><td class="td-q" table_id="h2tap0hfojd" row_id="tf6pmpb0u8" cell_id="a34mcja4ld5"><p>15</p></td></tr></tbody></table><p>Parágrafo final.</p>';
+
+configurePrivateQuill();
 
 describe('Testando funções de conversão de html', () => {
   it('"ajustaHtmlFromEditor" deveria retornar string sem classes de alinhamento iniciando com "ql-" e sem tags td com atributo "merge_id"', () => {
@@ -430,7 +434,7 @@ describe('Testando lexml-emenda-editor-texto-rico (EditorTextoRicoComponent)', (
     );
 
     const fragmentos = Array.from(editorTextoRico.quill?.root.querySelectorAll('ins') || []) as HTMLElement[];
-    const blotPrimeiroFragmento = Quill.find(fragmentos[0]);
+    const blotPrimeiroFragmento = PrivateQuill.find(fragmentos[0]);
     const indexDentroPrimeiroFragmento = editorTextoRico.quill!.getIndex(blotPrimeiroFragmento) + 1;
     editorTextoRico.quill?.setSelection(indexDentroPrimeiroFragmento, 0);
     editorTextoRico.onSelectionChange({ index: indexDentroPrimeiroFragmento, length: 0 });

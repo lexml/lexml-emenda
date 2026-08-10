@@ -1,5 +1,6 @@
 import { html, LitElement, PropertyValues, TemplateResult } from 'lit';
 import { customElement, property, query } from 'lit/decorators.js';
+import Quill from '../../internal/quill/private-quill';
 import { iconeMarginBottom, iconeTextIndent, negrito, sublinhado, iconeNotaDeRodape, iconeComentario } from '../../../assets/icons/icons';
 import { Observable } from '../../util/observable';
 import { rootStore } from '../../redux/store';
@@ -15,13 +16,10 @@ import { showMenuImagem } from './menu-imagem';
 import { Anexo } from '../../model/emenda/emenda';
 import { Modo } from '../../redux/elemento/enum/enumUtil';
 import { editorTextoRicoCss } from '../editor-texto-rico/editor-texto-rico.css';
-import { EstiloTextoClass } from '../editor-texto-rico/estilos-texto';
 import { quillTableCss } from '../editor-texto-rico/quill.table.css';
 import TableModule from '../../assets/js/quill1-table/index.js';
 import TableTrick from '../../assets/js/quill1-table/js/TableTrick.js';
 import { removeElementosTDOcultos } from './texto-rico-util';
-import { NoIndentClass } from './text-indent';
-import { MarginBottomClass } from './margin-bottom';
 import { StateEvent, StateType } from '../../redux/state';
 import { LexmlEmendaConfig } from '../../model/lexmlEmendaConfig';
 import { AlterarLarguraTabelaColunaModalComponent } from './alterar-largura-tabela-coluna-modal';
@@ -39,13 +37,20 @@ import { TipoMensagem } from '../../model/lexml/util/mensagem';
 import { alertarInfo } from '../../redux/elemento/util/alertaUtil';
 import { limparArticulacaoAction } from '../../model/lexml/acao/limparArticulacao';
 
-const DefaultKeyboardModule = Quill.import('modules/keyboard');
-const DefaultClipboardModule = Quill.import('modules/clipboard');
 const Delta = Quill.import('delta');
 
 const CLASS_BUTTON_ACEITAR_REVISAO = 'aceitar-revisao';
 const CLASS_BUTTON_REJEITAR_REVISAO = 'rejeitar-revisao';
 const CLASS_BUTTON_ADICIONAR_COMENTARIO = 'ql-lexml-emenda-comentario';
+
+export interface EditorTextoRicoApi {
+  [key: string]: any;
+  root: HTMLDivElement;
+  focus(): void;
+  getText(index?: number, length?: number): string;
+  insertText(index: number, text: string, source?: 'api' | 'user' | 'silent'): unknown;
+  deleteText(index: number, length: number, source?: 'api' | 'user' | 'silent'): unknown;
+}
 
 @customElement('lexml-emenda-editor-texto-rico')
 export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
@@ -65,7 +70,7 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
   private comentarioOverlayScrollContainer?: HTMLElement;
   private comentarioOverlayFrame?: number;
 
-  quill?: Quill;
+  quill?: EditorTextoRicoApi;
 
   lastSelecion?: any;
 
@@ -267,13 +272,6 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
   init = (): void => {
     const quillContainer = this.querySelector(`#${this.id}-inner`) as HTMLElement;
     if (quillContainer) {
-      Quill.register('modules/keyboard', DefaultKeyboardModule, true);
-      Quill.register('modules/clipboard', DefaultClipboardModule, true);
-      Quill.register('modules/table', TableModule, true);
-      Quill.register('formats/estilo-texto', EstiloTextoClass, true);
-      Quill.register('formats/text-indent', NoIndentClass, true);
-      Quill.register('formats/margin-bottom', MarginBottomClass, true);
-
       const customToolbarOptions = toolbarOptions.map(options => [...options]);
       const customFormatsOptions = [...formatsOptions];
       if (this.modo === Modo.JUSTIFICATIVA) {
@@ -436,7 +434,7 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
       this.quill.root.addEventListener(NOTA_RODAPE_REMOVE_EVENT, this.updateNotasRodape);
       this.buildRevisoes();
 
-      QuillUtil.configurarAcoesLink(this.quill!);
+      QuillUtil.configurarAcoesLink(this.quill as InstanceType<typeof Quill>);
     }
   };
 
@@ -1090,8 +1088,6 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
     if (!this.quill || !this.quill.root) {
       return;
     }
-
-    this;
 
     this.texto = texto;
     this.idsSequenciasComentarioRemovidas.clear();

@@ -27,7 +27,8 @@ module.exports = {
   rules: {
     eqeqeq: 'error',
     'no-unused-vars': 'off',
-    '@typescript-eslint/no-unused-vars': ['error'],
+    '@typescript-eslint/no-unused-vars': ['error', { caughtErrors: 'none' }],
+    '@typescript-eslint/no-unused-expressions': ['error', { allowShortCircuit: true, allowTernary: true }],
     'no-extra-semi': 'error',
     semi: 'error',
     'no-trailing-spaces': 'error',
@@ -56,4 +57,12 @@ module.exports = {
     '@typescript-eslint/no-explicit-any': 'off',
     '@typescript-eslint/explicit-module-boundary-types': 'off',
   },
+  overrides: [
+    {
+      files: ['src/util/eta-quill/**/*.ts', 'src/components/editor-texto-rico/**/*.ts'],
+      rules: {
+        'no-restricted-globals': ['error', { name: 'Quill', message: 'Use a referência importada de private-quill.' }],
+      },
+    },
+  ],
 };

@@ -4,8 +4,6 @@
 // import 'quill/dist/quill.snow.css';
 // import 'font-awesome/css/font-awesome.css';
 
-import 'quill/dist/quill';
-
 import '@shoelace-style/shoelace/dist/components/radio-group/radio-group.js';
 import '@shoelace-style/shoelace/dist/components/radio-button/radio-button';
 import '@shoelace-style/shoelace/dist/components/input/input';
@@ -20,10 +18,7 @@ import '@shoelace-style/shoelace/dist/components/checkbox/checkbox';
 import '@shoelace-style/shoelace/dist/components/switch/switch';
 import '@shoelace-style/shoelace/dist/components/tooltip/tooltip';
 import '@shoelace-style/shoelace/dist/components/card/card';
-import { ModuloAspasCurvas } from './components/editor-texto-rico/moduloAspasCurvas';
-import { ModuloRevisao } from './components/editor-texto-rico/moduloRevisao';
-import { ModuloNotaRodape } from './components/editor-texto-rico/moduloNotaRodape';
-import { ModuloComentario } from './components/editor-texto-rico/moduloComentario';
+import { configurePrivateQuill } from './internal/quill/configure-private-quill';
 
 // ---------------------------------------------------
 
@@ -32,7 +27,7 @@ export { ComandoEmendaComponent } from './components/comandoEmenda/comandoEmenda
 export { EditorComponent } from './components/editor/editor.component';
 export { ElementoComponent } from './components/elemento/elemento.component';
 export { AtalhosComponent as HelpComponent } from './components/ajuda/atalhos.component';
-export { EditorTextoRicoComponent } from './components/editor-texto-rico/editor-texto-rico.component';
+export { EditorTextoRicoApi, EditorTextoRicoComponent } from './components/editor-texto-rico/editor-texto-rico.component';
 export { AlterarLarguraTabelaColunaModalComponent } from './components/editor-texto-rico/alterar-largura-tabela-coluna-modal';
 export { AlterarLarguraImagemModalComponent } from './components/editor-texto-rico/alterar-largura-imagem-modal';
 export { LexmlEtaComponent } from './components/lexml-eta.component';
@@ -54,7 +49,4 @@ export { SubstituicaoTermoComponent } from './components/substituicao-termo/subs
 export { Usuario } from './model/revisao/usuario';
 export { emendaDivididaDialog } from './components/editor/emendaDivididaDialog';
 
-Quill.register('modules/aspasCurvas', ModuloAspasCurvas, true);
-Quill.register('modules/revisao', ModuloRevisao, true);
-Quill.register('modules/notaRodape', ModuloNotaRodape, true);
-Quill.register('modules/comentario', ModuloComentario, true);
+configurePrivateQuill();

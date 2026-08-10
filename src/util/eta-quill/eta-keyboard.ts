@@ -1,18 +1,20 @@
 import { DescricaoSituacao } from '../../model/dispositivo/situacao';
+import PrivateQuill from '../../internal/quill/private-quill';
+import { QuillRange } from '../../internal/quill/quill-types';
 import { cancelarPropagacaoDoEvento } from '../event-util';
 import { Observable } from '../observable';
 import { EtaContainerTable } from './eta-container-table';
-import { EtaQuill, TextoSelecionado } from './eta-quill';
+import type { EtaQuill, TextoSelecionado } from './eta-quill';
 
 const strCaracteresValidos = "a-z0-9áéíóúÁÉÍÓÚãẽĩõũÃẼĨÕŨàèìòùÀÈÌÒÙäëïöüÄËÏÖÜâêîôûÂÊÎÔÛçÇýÝỹỸỳỲÿŸŶŷñÑ\\s'!@#$%&\\*\\(\\)_\\-+=`{}\\[\\]\\^~<,>.:;?/|\\ªº¹²³£¢¬§¿¡“”";
 export const CaracteresValidos = new RegExp(`[${strCaracteresValidos}]`, 'i');
 export const CaracteresNaoValidos = new RegExp(`[^${strCaracteresValidos}]`, 'gi');
 
-export const Keyboard = Quill.import('modules/keyboard');
+export const Keyboard = PrivateQuill.import('modules/keyboard');
 
 export class EtaKeyboard extends Keyboard {
   operacaoTecladoInvalida: Observable<void> = new Observable<void>();
-  adicionaElementoTeclaEnter: Observable<RangeStatic> = new Observable<RangeStatic>();
+  adicionaElementoTeclaEnter: Observable<QuillRange> = new Observable<QuillRange>();
   removeElemento: Observable<void> = new Observable<void>();
   removeElementoSemTexto: Observable<string> = new Observable<string>();
   renumeraElemento: Observable<KeyboardEvent> = new Observable<KeyboardEvent>();
@@ -236,7 +238,7 @@ export class EtaKeyboard extends Keyboard {
       if (textoSelec.quantidadeCR > 0) {
         if (textoSelec.quantidadeCR === 1 && /\n$/gi.test(textoSelec.conteudo)) {
           const range = this.quill.getSelection();
-          range && this.quill.setSelection(range.index, range.length - 1, Quill.sources.API);
+          range && this.quill.setSelection(range.index, range.length - 1, PrivateQuill.sources.API);
           return true;
         } else {
           this.operacaoTecladoInvalida.notify();
@@ -248,40 +250,40 @@ export class EtaKeyboard extends Keyboard {
   }
 
   private onTeclaArrowRight(ev: KeyboardEvent): void {
-    const range: RangeStatic = this.quill.getSelection(true);
+    const range: QuillRange = this.quill.getSelection(true);
     const [blotCursor, offset] = this.quill.getLine(range.index);
 
     if (offset === blotCursor.tamanho) {
       if (blotCursor.linha.next) {
-        this.quill.setIndex(this.quill.getIndex(blotCursor.linha.next.blotConteudo), Quill.sources.USER);
+        this.quill.setIndex(this.quill.getIndex(blotCursor.linha.next.blotConteudo), PrivateQuill.sources.USER);
       }
       cancelarPropagacaoDoEvento(ev);
     }
   }
 
   private onTeclaArrowLeft(ev: KeyboardEvent): void {
-    const range: RangeStatic = this.quill.getSelection(true);
+    const range: QuillRange = this.quill.getSelection(true);
     const [blotCursor, offset] = this.quill.getLine(range.index);
 
     if (offset === 0) {
       if (blotCursor.linha.prev) {
         const linhaAnt: EtaContainerTable = blotCursor.linha.prev;
         const index: number = this.quill.getIndex(linhaAnt.blotConteudo) + linhaAnt.blotConteudo.tamanho;
-        this.quill.setIndex(index, Quill.sources.USER);
+        this.quill.setIndex(index, PrivateQuill.sources.USER);
       }
       cancelarPropagacaoDoEvento(ev);
     }
   }
 
   private onTeclaArrowUp(ev: KeyboardEvent): void {
-    const range: RangeStatic = this.quill.getSelection(true);
+    const range: QuillRange = this.quill.getSelection(true);
     const [blotCursor, offset] = this.quill.getLine(range.index);
 
     if (offset === 0 || this.quill.cursorDeTextoEstaSobreOmissis()) {
       if (blotCursor.linha.prev) {
         const linhaAnt: EtaContainerTable = blotCursor.linha.prev;
         const index: number = this.quill.getIndex(linhaAnt.blotConteudo) + linhaAnt.blotConteudo.tamanho;
-        this.quill.setIndex(index, Quill.sources.USER);
+        this.quill.setIndex(index, PrivateQuill.sources.USER);
       }
       cancelarPropagacaoDoEvento(ev);
     }
@@ -292,12 +294,12 @@ export class EtaKeyboard extends Keyboard {
   }
 
   private onTeclaArrowDown(ev: KeyboardEvent): void {
-    const range: RangeStatic = this.quill.getSelection(true);
+    const range: QuillRange = this.quill.getSelection(true);
     const [blotCursor, offset] = this.quill.getLine(range.index);
 
     if (offset === blotCursor.tamanho || this.quill.cursorDeTextoEstaSobreOmissis()) {
       if (blotCursor.linha.next) {
-        this.quill.setIndex(this.quill.getIndex(blotCursor.linha.next.blotConteudo), Quill.sources.USER);
+        this.quill.setIndex(this.quill.getIndex(blotCursor.linha.next.blotConteudo), PrivateQuill.sources.USER);
       }
       cancelarPropagacaoDoEvento(ev);
     }
@@ -309,22 +311,22 @@ export class EtaKeyboard extends Keyboard {
 
   private onTeclaEnter(ev: KeyboardEvent): void {
     if (this.verificarOperacaoTecladoPermitida() && !this.quill.cursorDeTextoEstaSobreLink(-1)) {
-      const range: RangeStatic = this.quill.getSelection(true);
-      this.quill.setSelection(range.index, 0, Quill.sources.SILENT);
+      const range: QuillRange = this.quill.getSelection(true);
+      this.quill.setSelection(range.index, 0, PrivateQuill.sources.SILENT);
       this.adicionaElementoTeclaEnter.notify(range);
     }
     cancelarPropagacaoDoEvento(ev);
   }
 
   private onTeclaEscape(ev: KeyboardEvent): void {
-    const range: RangeStatic = this.quill.getSelection(true);
-    this.quill.setIndex(range.index, Quill.sources.SILENT);
-    this.quill.setSelection(this.quill.inicioConteudoAtual, 0, Quill.sources.SILENT);
+    const range: QuillRange = this.quill.getSelection(true);
+    this.quill.setIndex(range.index, PrivateQuill.sources.SILENT);
+    this.quill.setSelection(this.quill.inicioConteudoAtual, 0, PrivateQuill.sources.SILENT);
     cancelarPropagacaoDoEvento(ev);
   }
 
   private onTeclaDelete(ev: KeyboardEvent): void {
-    const range: RangeStatic = this.quill.getSelection(true);
+    const range: QuillRange = this.quill.getSelection(true);
     if (!this.quill.linhaAtual.blotConteudo.html) {
       cancelarPropagacaoDoEvento(ev);
       this.removeElementoSemTexto.notify(ev.key);
@@ -346,7 +348,7 @@ export class EtaKeyboard extends Keyboard {
   }
 
   private onTeclaBackspace(ev: KeyboardEvent): void {
-    const range: RangeStatic = this.quill.getSelection(true);
+    const range: QuillRange = this.quill.getSelection(true);
     if (!this.quill.linhaAtual.blotConteudo.html) {
       cancelarPropagacaoDoEvento(ev);
       this.removeElementoSemTexto.notify(ev.key);
@@ -373,14 +375,14 @@ export class EtaKeyboard extends Keyboard {
   private onTeclaHome(ev: KeyboardEvent): void {
     const articulacao = this.quill.getPrimeiraLinha();
     const index: number = this.quill.getIndex(articulacao.next.blotConteudo);
-    this.quill.setIndex(index, Quill.sources.USER);
+    this.quill.setIndex(index, PrivateQuill.sources.USER);
     this.quill.scroll.domNode.scrollTo(0, 0);
     cancelarPropagacaoDoEvento(ev);
   }
 
   private onTeclaEnd(ev: KeyboardEvent): void {
-    const index: number = this.quill.getIndex(this.quill.getUltimaLinha().blotConteudo) + this.quill.getUltimaLinha().blotConteudo?.tamanho ?? 0;
-    this.quill.setIndex(index, Quill.sources.USER);
+    const index: number = this.quill.getIndex(this.quill.getUltimaLinha().blotConteudo) + (this.quill.getUltimaLinha().blotConteudo?.tamanho ?? 0);
+    this.quill.setIndex(index, PrivateQuill.sources.USER);
     this.quill.scroll.domNode.scrollTo(0, this.quill.scroll.domNode.scrollHeight);
     cancelarPropagacaoDoEvento(ev);
   }
@@ -412,7 +414,7 @@ export class EtaKeyboard extends Keyboard {
   }
 
   private onTeclaCtrlShiftA(ev: KeyboardEvent): void {
-    this.quill.setSelection(this.quill.inicioConteudoAtual, this.quill.linhaAtual.blotConteudo.tamanho, Quill.sources.SILENT);
+    this.quill.setSelection(this.quill.inicioConteudoAtual, this.quill.linhaAtual.blotConteudo.tamanho, PrivateQuill.sources.SILENT);
     cancelarPropagacaoDoEvento(ev);
   }
 
@@ -469,7 +471,7 @@ export class EtaKeyboard extends Keyboard {
 
   private enterEmOmissis(): void {
     if (this.verificarOperacaoTecladoPermitida()) {
-      const range: RangeStatic = this.quill.getSelection(true);
+      const range: QuillRange = this.quill.getSelection(true);
       const inicioLinha = this.quill.getIndex(this.quill.linhaAtual.blotConteudo);
       const tamanho = this.quill.linhaAtual.blotConteudo.length();
 

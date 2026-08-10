@@ -1,3 +1,5 @@
+import Quill from '../../internal/quill/private-quill';
+
 const Parchment: any = Quill.import('parchment');
 
 const config = {

@@ -1,3 +1,5 @@
+import Quill from '../../internal/quill/private-quill';
+
 const Module = Quill.import('core/module');
 const Inline = Quill.import('blots/inline');
 const Delta = Quill.import('delta');
