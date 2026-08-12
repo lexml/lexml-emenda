@@ -457,7 +457,7 @@ export const editorTextoRicoCss = html`
       height: 0.5em;
       background-color: var(--cor-moldura-revisao);
       vertical-align: top;
-      margin-right: 1px;
+      margin-left: -2px;
     }
 
     .lexml-emenda-editor-texto-rico[data-modo='justificativa'] .ql-editor ins.revisao-selecionada::after,
@@ -469,7 +469,7 @@ export const editorTextoRicoCss = html`
       width: 2px;
       height: 0.5em;
       background-color: var(--cor-moldura-revisao);
-      margin-left: 1px;
+      margin-right: -2px;
       position: relative;
       top: 0.35em;
     }

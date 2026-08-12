@@ -463,6 +463,23 @@ describe('Testando lexml-emenda-editor-texto-rico (EditorTextoRicoComponent)', (
     expect(fragmentos[1].classList.contains('revisao-fragmento-continua-anterior')).to.be.true;
   });
 
+  it('Nao deveria deslocar o texto posterior ao exibir a moldura da revisao', async () => {
+    editorTextoRico = await fixture<EditorTextoRicoComponent>(html`<lexml-emenda-editor-texto-rico .modo=${Modo.JUSTIFICATIVA}></lexml-emenda-editor-texto-rico>`);
+    editorTextoRico.setContent('<p>Antes <del usuario="Teste" date="2026-08-12 13:00:00" id-revisao="rev1">revisado</del> depois</p>');
+
+    const revisao = editorTextoRico.quill!.root.querySelector('del') as HTMLElement;
+    const textoPosterior = revisao.nextSibling as Text;
+    const rangeTextoPosterior = document.createRange();
+    rangeTextoPosterior.setStart(textoPosterior, 1);
+    rangeTextoPosterior.setEnd(textoPosterior, 2);
+    const posicaoAntes = rangeTextoPosterior.getBoundingClientRect().left;
+
+    revisao.classList.add('revisao-selecionada');
+    await new Promise(resolve => requestAnimationFrame(() => resolve(undefined)));
+
+    expect(rangeTextoPosterior.getBoundingClientRect().left).to.be.closeTo(posicaoAntes, 0.1);
+  });
+
   it('Deveria centralizar tooltip sobre fragmentos continuos da mesma revisao na mesma linha', () => {
     editorTextoRico.modo = Modo.JUSTIFICATIVA;
     editorTextoRico.setContent(
