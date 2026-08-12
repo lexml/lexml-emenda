@@ -310,6 +310,9 @@ export const editorTextoRicoCss = html`
 
     .lexml-emenda-editor-texto-rico .ql-editor comentario {
       background-color: #fff8c5;
+    }
+
+    .lexml-emenda-editor-texto-rico .ql-editor comentario[data-comentario-fragmento-final] {
       margin-right: 22px;
     }
 

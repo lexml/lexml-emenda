@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-expressions */
 import { expect, fixture, html } from '@open-wc/testing';
 import { EditorTextoRicoComponent, Usuario } from '../../../src';
 import { ajustaHtmlFromEditor, ajustaHtmlToEditor } from '../../../src/components/editor-texto-rico/texto-rico-util';
@@ -281,6 +282,23 @@ describe('Testando lexml-emenda-editor-texto-rico (EditorTextoRicoComponent)', (
 
     expect(editorTextoRico.possuiComentario('sc123')).to.be.true;
     expect(editorTextoRico.getTextoComentario('sc123')).to.equal('Texto comentado');
+  });
+
+  it('Deveria reservar espaço para o ícone somente no último fragmento de comentário dividido por exclusão revisada', async () => {
+    editorTextoRico = await fixture<EditorTextoRicoComponent>(html`<lexml-emenda-editor-texto-rico .modo=${Modo.JUSTIFICATIVA}></lexml-emenda-editor-texto-rico>`);
+    editorTextoRico.setContent('<p>Teste par<del usuario="Fulano" date="2026-08-12 13:49:00" id-revisao="r1">alele</del>pipedo</p>');
+    editorTextoRico.quill?.setSelection(11, 6);
+    editorTextoRico.adicionarComentario('sc123');
+
+    await new Promise(resolve => requestAnimationFrame(() => resolve(undefined)));
+
+    const fragmentos = Array.from(editorTextoRico.quill!.root.querySelectorAll<HTMLElement>('comentario[id-sequencia-comentario="sc123"]'));
+    expect(fragmentos, editorTextoRico.quill!.root.innerHTML).to.have.length(2);
+    expect(fragmentos[0].hasAttribute('data-comentario-fragmento-final')).to.be.false;
+    expect(fragmentos[1].hasAttribute('data-comentario-fragmento-final')).to.be.true;
+    expect(getComputedStyle(fragmentos[0]).marginRight).to.equal('0px');
+    expect(getComputedStyle(fragmentos[1]).marginRight).to.equal('22px');
+    expect(editorTextoRico.ajustaHtml(editorTextoRico.quill!.root.innerHTML)).to.not.include('data-comentario-fragmento-final');
   });
 
   it('Não deveria colar marcação de comentário copiada do editor', async () => {

@@ -1274,14 +1274,13 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
         }
 
         .comentarios__ordenacao {
-          width: 112px;
+          width: 120px;
           height: 26px;
           border: 1px solid var(--sl-color-neutral-200);
           border-radius: 4px;
           color: var(--sl-color-neutral-700);
           font: inherit;
           font-size: 0.78rem;
-          padding: 0 20px 0 6px;
           background: white;
         }
 
@@ -1910,10 +1909,9 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
         <div class="comentarios__cabecalho">
           <h4>Comentários</h4>
           <label class="comentarios__ordenacao-container">
-            Ordenar
             <select class="comentarios__ordenacao" aria-label="Ordenação dos comentários" .value=${this.ordenacaoComentarios} @change=${this.alterarOrdenacaoComentarios}>
               <option value="texto">Ordem no texto</option>
-              <option value="recentes">Recentes</option>
+              <option value="recentes">Mais recentes</option>
             </select>
           </label>
         </div>

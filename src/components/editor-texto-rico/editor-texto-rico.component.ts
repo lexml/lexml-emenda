@@ -42,6 +42,7 @@ const Delta = Quill.import('delta');
 const CLASS_BUTTON_ACEITAR_REVISAO = 'aceitar-revisao';
 const CLASS_BUTTON_REJEITAR_REVISAO = 'rejeitar-revisao';
 const CLASS_BUTTON_ADICIONAR_COMENTARIO = 'ql-lexml-emenda-comentario';
+const COMENTARIO_FRAGMENTO_FINAL_ATTRIBUTE = 'data-comentario-fragmento-final';
 
 export interface EditorTextoRicoApi {
   [key: string]: any;
@@ -806,6 +807,7 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
     }
 
     const comentariosPorId = this.getElementosComentarioPorId();
+    this.marcarFragmentosFinaisComentario(comentariosPorId);
     const idsAtuais = new Set(comentariosPorId.keys());
 
     this.comentarioOverlayContainer.querySelectorAll<HTMLButtonElement>('.comentario-texto-icone').forEach(botao => {
@@ -854,6 +856,13 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
     });
 
     return comentariosPorId;
+  }
+
+  private marcarFragmentosFinaisComentario(comentariosPorId: Map<string, HTMLElement[]>): void {
+    comentariosPorId.forEach(elementos => {
+      elementos.forEach(el => el.removeAttribute(COMENTARIO_FRAGMENTO_FINAL_ATTRIBUTE));
+      elementos[elementos.length - 1]?.setAttribute(COMENTARIO_FRAGMENTO_FINAL_ATTRIBUTE, '');
+    });
   }
 
   private getUltimoRectComentarioVisivel(elementos: HTMLElement[], quillContainer: HTMLElement): DOMRect | undefined {
@@ -1188,6 +1197,7 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
       .replace(/ql-align-center/g, 'align-center')
       .replace(/ql-align-right/g, 'align-right')
       .replace(/\sclass="comentario-selecionado"/g, '')
+      .replace(/\sdata-comentario-fragmento-final=""/g, '')
       .replace(/\s+spellcheck="false"/g, '');
 
     result = removeElementosTDOcultos(result);
