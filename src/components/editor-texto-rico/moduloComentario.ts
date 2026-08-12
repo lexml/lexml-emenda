@@ -44,8 +44,32 @@ class ModuloComentario extends Module {
     super(quill, options);
     this.quill = quill;
     this.quill.comentarios = this;
+    this.quill.root.addEventListener('copy', this.onCopy, true);
     this.quill.root.addEventListener('paste', this.onPaste, true);
   }
+
+  private onCopy = (event: ClipboardEvent): void => {
+    if (event.defaultPrevented || !event.clipboardData || !this.quill.isEnabled()) {
+      return;
+    }
+
+    const range = this.quill.getSelection();
+    if (!range?.length || !this.rangePossuiComentario(range)) {
+      return;
+    }
+
+    const nativeRange = this.quill.selection?.getNativeRange()?.native as Range | undefined;
+    if (!nativeRange || nativeRange.collapsed) {
+      return;
+    }
+
+    const container = document.createElement('div');
+    container.appendChild(nativeRange.cloneContents());
+
+    event.preventDefault();
+    event.clipboardData.setData('text/plain', this.quill.getText(range.index, range.length));
+    event.clipboardData.setData('text/html', this.removerComentariosDoContainer(container));
+  };
 
   private onPaste = (event: ClipboardEvent): void => {
     if (event.defaultPrevented || !this.quill.isEnabled()) {
@@ -82,6 +106,10 @@ class ModuloComentario extends Module {
     const container = document.createElement('div');
     container.innerHTML = html;
 
+    return this.removerComentariosDoContainer(container);
+  }
+
+  private removerComentariosDoContainer(container: HTMLElement): string {
     container.querySelectorAll(COMENTARIO_TAG).forEach(el => {
       while (el.firstChild) {
         el.parentNode?.insertBefore(el.firstChild, el);

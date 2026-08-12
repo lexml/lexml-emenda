@@ -386,6 +386,28 @@ describe('Testando lexml-emenda-editor-texto-rico (EditorTextoRicoComponent)', (
     expect(editorTextoRico.possuiComentario('sc123')).to.be.false;
   });
 
+  ['bem', 'bem '].forEach(textoSelecionado => {
+    it(`Deveria copiar exatamente o texto comentado sem espaco adicional: "${textoSelecionado}"`, () => {
+      editorTextoRico.setContent('<p>Tudo <comentario id-sequencia-comentario="sc123">bem</comentario> depois.</p>');
+      editorTextoRico.quill?.setSelection(5, textoSelecionado.length);
+
+      const clipboardData = new DataTransfer();
+      const copyEvent = new ClipboardEvent('copy', {
+        bubbles: true,
+        cancelable: true,
+        clipboardData,
+      });
+
+      editorTextoRico.quill?.root.dispatchEvent(copyEvent);
+
+      expect(copyEvent.defaultPrevented).to.be.true;
+      expect(clipboardData.getData('text/plain')).to.equal(textoSelecionado);
+      expect(clipboardData.getData('text/html')).to.not.include('<comentario');
+      expect(clipboardData.getData('text/html')).to.not.include('text-indent');
+      expect(clipboardData.getData('text/html')).to.not.include('\t');
+    });
+  });
+
   it('Deveria desabilitar o botão de adicionar comentário quando a seleção já possuir comentário', async () => {
     editorTextoRico.setContent('<p>Texto para comentário.</p>');
     editorTextoRico.quill?.setSelection(0, 5);
