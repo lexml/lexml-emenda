@@ -1,8 +1,11 @@
+/* eslint-disable @typescript-eslint/no-unused-expressions */
 import { expect } from '@open-wc/testing';
 import { LexmlEmendaComponent } from '../../../src/components/lexml-emenda.component';
 import { Comentario, SequenciaComentario, TipoLocalComentario } from '../../../src/model/emenda/emenda';
 import { Usuario } from '../../../src/model/revisao/usuario';
 import { rootStore } from '../../../src/redux/store';
+import { createArticulacao, criaDispositivo } from '../../../src/model/lexml/dispositivo/dispositivoLexmlFactory';
+import { TipoDispositivo } from '../../../src/model/lexml/tipo/tipoDispositivo';
 
 const criarUsuario = (id: string, nome: string): Usuario => Object.assign(new Usuario(), { id, nome });
 
@@ -21,6 +24,23 @@ const criarSequenciaComentario = (...comentarios: Comentario[]): SequenciaComent
   });
 
 const criarSequenciaComentarioComId = (id: string, ...comentarios: Comentario[]): SequenciaComentario => Object.assign(criarSequenciaComentario(...comentarios), { id });
+
+const criarSequenciaComentarioEmenta = (): SequenciaComentario =>
+  Object.assign(criarSequenciaComentarioComId('scEmenta', criarComentario('Comentário da ementa')), {
+    local: TipoLocalComentario.TEXTO,
+    idDispositivo: 'ementa',
+  });
+
+const criarArticulacaoComEmenta = (): any => {
+  const articulacao = createArticulacao();
+  const ementa = criaDispositivo(articulacao, TipoDispositivo.ementa.tipo);
+  articulacao.removeFilho(ementa);
+  ementa.pai = articulacao;
+  ementa.id = 'ementa';
+  ementa.texto = 'Texto original da ementa';
+  articulacao.projetoNorma = { ementa } as any;
+  return { articulacao, ementa };
+};
 
 describe('LexmlEmendaComponent - comentários', () => {
   let elementoReducerAnterior: any;
@@ -567,5 +587,38 @@ describe('LexmlEmendaComponent - comentários', () => {
     });
 
     expect(component.getTrechoComentario(sequencia)).to.equal('   ');
+  });
+
+  it('Deveria usar o id estável da ementa para recuperar o indicador do comentário', () => {
+    const component = new LexmlEmendaComponent() as any;
+    const { articulacao, ementa } = criarArticulacaoComEmenta();
+    const sequencia = criarSequenciaComentarioEmenta();
+    (rootStore.getState() as any).elementoReducer = { ...rootStore.getState().elementoReducer, articulacao };
+    component.sequenciasComentario = [sequencia];
+    component.uuid2DispositivoPorSequenciaComentario.set(sequencia.id, 'uuid-obsoleto');
+
+    component.restaurarReferenciasComentariosArticulacao();
+
+    expect(component.uuid2DispositivoPorSequenciaComentario.has(sequencia.id)).to.be.false;
+    expect(component.getIdsDispositivosComentados()).to.deep.equal(['ementa']);
+    expect(component.getDispositivoComentarioArticulacao(sequencia)).to.equal(ementa);
+    expect(component.getSequenciaComentarioPorDispositivo('ementa', ementa.uuid2)).to.equal(sequencia);
+  });
+
+  it('Não deveria excluir o comentário da ementa após editar seu texto e sincronizar para salvar', () => {
+    const component = new LexmlEmendaComponent() as any;
+    const { articulacao, ementa } = criarArticulacaoComEmenta();
+    const sequencia = criarSequenciaComentarioEmenta();
+    (rootStore.getState() as any).elementoReducer = { ...rootStore.getState().elementoReducer, articulacao };
+    component.sequenciasComentario = [sequencia];
+    component.uuid2DispositivoPorSequenciaComentario.set(sequencia.id, 'uuid-obsoleto');
+
+    ementa.texto = 'Texto da ementa alterado manualmente';
+    component.sincronizarReferenciasComentariosArticulacao(true);
+
+    expect(component.sequenciasComentario).to.have.length(1);
+    expect(component.sequenciasComentario[0].id).to.equal('scEmenta');
+    expect(component.sequenciasComentario[0].idDispositivo).to.equal('ementa');
+    expect(component.getIdsDispositivosComentados()).to.deep.equal(['ementa']);
   });
 });

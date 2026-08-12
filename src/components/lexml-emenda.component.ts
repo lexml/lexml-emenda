@@ -675,7 +675,16 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
     let houveAtualizacao = false;
 
     this.sequenciasComentario.forEach(seq => {
-      if (!this.isComentarioArticulacao(seq) || this.uuid2DispositivoPorSequenciaComentario.has(seq.id)) {
+      if (!this.isComentarioArticulacao(seq)) {
+        return;
+      }
+
+      if (this.isComentarioEmenta(seq)) {
+        houveAtualizacao = this.uuid2DispositivoPorSequenciaComentario.delete(seq.id) || houveAtualizacao;
+        return;
+      }
+
+      if (this.uuid2DispositivoPorSequenciaComentario.has(seq.id)) {
         return;
       }
 
@@ -2326,6 +2335,10 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
     return !!seq?.idDispositivo && seq.local === TipoLocalComentario.TEXTO;
   }
 
+  private isComentarioEmenta(seq?: SequenciaComentario): boolean {
+    return this.isComentarioArticulacao(seq) && seq?.idDispositivo === 'ementa';
+  }
+
   private getIdsDispositivosComentados(): string[] {
     const sequenciasArticulacao = this.sequenciasComentario.filter(seq => this.isComentarioArticulacao(seq));
     const key = sequenciasArticulacao.map(seq => `${seq.id}:${seq.idDispositivo || ''}:${this.uuid2DispositivoPorSequenciaComentario.get(seq.id) || ''}`).join('|');
@@ -2359,7 +2372,7 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
         return sequenciaPorUuid2;
       }
 
-      return sequenciasArticulacao.find(seq => !this.uuid2DispositivoPorSequenciaComentario.has(seq.id) && seq.idDispositivo === idDispositivo);
+      return sequenciasArticulacao.find(seq => (this.isComentarioEmenta(seq) || !this.uuid2DispositivoPorSequenciaComentario.has(seq.id)) && seq.idDispositivo === idDispositivo);
     }
 
     return sequenciasArticulacao.find(seq => seq.idDispositivo === idDispositivo);
@@ -2400,6 +2413,10 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
       return undefined;
     }
 
+    if (this.isComentarioEmenta(seq)) {
+      return this.getDispositivoPorIdComentario(seq.idDispositivo);
+    }
+
     const uuid2 = this.uuid2DispositivoPorSequenciaComentario.get(seq.id);
     const dispositivoPorUuid2 = uuid2 ? (findDispositivoByUuid2(articulacao, uuid2) as Dispositivo | null) : null;
     if (uuid2) {
@@ -2416,6 +2433,10 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
   }
 
   private getUuid2DispositivoComentario(seq: SequenciaComentario): string | undefined {
+    if (this.isComentarioEmenta(seq)) {
+      return undefined;
+    }
+
     const uuid2 = this.uuid2DispositivoPorSequenciaComentario.get(seq.id);
     if (uuid2) {
       return uuid2;
@@ -2922,7 +2943,9 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
     comentario.texto = textoComentario;
     sequenciaComentario.comentarios = [comentario];
 
-    this.comentarioArticulacaoAtual.elemento.uuid2 && this.uuid2DispositivoPorSequenciaComentario.set(sequenciaComentario.id, this.comentarioArticulacaoAtual.elemento.uuid2);
+    if (!this.isComentarioEmenta(sequenciaComentario) && this.comentarioArticulacaoAtual.elemento.uuid2) {
+      this.uuid2DispositivoPorSequenciaComentario.set(sequenciaComentario.id, this.comentarioArticulacaoAtual.elemento.uuid2);
+    }
     this.sequenciasComentario = [...this.sequenciasComentario, sequenciaComentario];
     this.idSequenciaComentarioAtual = sequenciaComentario.id;
     this.atualizarAlertaGlobalComentarios();
