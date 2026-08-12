@@ -26,7 +26,7 @@ import { AlterarLarguraTabelaColunaModalComponent } from './alterar-largura-tabe
 import { AlterarLarguraImagemModalComponent } from './alterar-largura-imagem-modal';
 import { notaRodapeCss } from './notaRodape.css';
 import { NOTA_RODAPE_CHANGE_EVENT, NOTA_RODAPE_REMOVE_EVENT, NotaRodape } from './notaRodape';
-import { COMENTARIO_ID_ATTRIBUTE, COMENTARIO_TAG } from './moduloComentario';
+import { COMENTARIO_FORMAT, COMENTARIO_ID_ATTRIBUTE, COMENTARIO_TAG } from './moduloComentario';
 import { SwitchRevisaoComponent } from '../switchRevisao/switch-revisao.component';
 import { atualizaRevisaoJustificativa } from '../../redux/elemento/reducer/atualizaRevisaoJustificativa';
 import { atualizaRevisaoTextoLivre } from '../../redux/elemento/reducer/atualizaRevisaoTextoLivre';
@@ -68,6 +68,8 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
   private timerOnChange?: any;
   private idsSequenciasComentarioRemovidas = new Set<string>();
   private comentarioOverlayContainer?: HTMLElement;
+  private comentarioOverlayHostContainer?: HTMLElement;
+  private comentarioEditorRoot?: HTMLElement;
   private comentarioOverlayScrollContainer?: HTMLElement;
   private comentarioOverlayFrame?: number;
 
@@ -262,6 +264,8 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
   disconnectedCallback(): void {
     this.quill?.off('text-change', this.updateTexto);
     this.quill?.off('selection-change', this.onSelectionChange);
+    this.comentarioOverlayHostContainer?.removeEventListener('click', this.onClickAoRedorIconeComentario, true);
+    this.comentarioEditorRoot?.removeEventListener('keydown', this.onKeyDownLimiteComentario, true);
     this.comentarioOverlayScrollContainer?.removeEventListener('scroll', this.agendarAtualizacaoIconesComentariosTexto);
     window.removeEventListener('resize', this.onResizeComentarioOverlay);
     if (this.comentarioOverlayFrame) {
@@ -767,6 +771,16 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
     }
 
     this.comentarioOverlayContainer = overlayContainer;
+    if (this.comentarioOverlayHostContainer !== quillContainer) {
+      this.comentarioOverlayHostContainer?.removeEventListener('click', this.onClickAoRedorIconeComentario, true);
+      this.comentarioOverlayHostContainer = quillContainer;
+      this.comentarioOverlayHostContainer.addEventListener('click', this.onClickAoRedorIconeComentario, true);
+    }
+    if (this.comentarioEditorRoot !== this.quill.root) {
+      this.comentarioEditorRoot?.removeEventListener('keydown', this.onKeyDownLimiteComentario, true);
+      this.comentarioEditorRoot = this.quill.root;
+      this.comentarioEditorRoot.addEventListener('keydown', this.onKeyDownLimiteComentario, true);
+    }
 
     const scrollingContainer = (((this.quill as any).scrollingContainer as HTMLElement | undefined) || this.quill.root) as HTMLElement;
     if (this.comentarioOverlayScrollContainer !== scrollingContainer) {
@@ -780,6 +794,202 @@ export class EditorTextoRicoComponent extends connect(rootStore)(LitElement) {
   }
 
   private onResizeComentarioOverlay = (): void => this.agendarAtualizacaoIconesComentariosTexto();
+
+  private onClickAoRedorIconeComentario = (ev: MouseEvent): void => {
+    if (ev.button !== 0 || !this.quill) {
+      return;
+    }
+
+    const destino = this.getDestinoAoRedorIconeComentario(ev.clientX, ev.clientY);
+    if (!destino) {
+      return;
+    }
+
+    ev.preventDefault();
+    ev.stopPropagation();
+    this.posicionarSelecaoNoLimiteComentario(destino.indice, destino.ultimoElemento, destino.dentroComentario);
+  };
+
+  private onKeyDownLimiteComentario = (ev: KeyboardEvent): void => {
+    if (!this.quill || (ev.key !== 'ArrowLeft' && ev.key !== 'ArrowRight') || ev.shiftKey || ev.ctrlKey || ev.altKey || ev.metaKey || ev.isComposing) {
+      return;
+    }
+
+    const range = this.quill.getSelection();
+    if (!range || range.length !== 0) {
+      return;
+    }
+
+    const comentario = this.getElementoComentarioTerminandoNoIndice(range.index);
+    if (!comentario) {
+      return;
+    }
+
+    const selecaoNativa = document.getSelection();
+    const noSelecionado = selecaoNativa?.anchorNode;
+    if (!noSelecionado) {
+      return;
+    }
+
+    const dentroComentario = comentario.contains(noSelecionado);
+    const moverParaDentro = ev.key === 'ArrowLeft' && !dentroComentario && this.selecaoEstaNoInicioAposComentario(comentario, selecaoNativa);
+    const moverParaFora = ev.key === 'ArrowRight' && dentroComentario && Boolean(this.getPrimeiroNoTextoAposElemento(comentario));
+    if (!moverParaDentro && !moverParaFora) {
+      return;
+    }
+
+    ev.preventDefault();
+    ev.stopPropagation();
+    this.posicionarSelecaoNoLimiteComentario(range.index, comentario, moverParaDentro);
+  };
+
+  private getElementoComentarioTerminandoNoIndice(indice: number): HTMLElement | undefined {
+    if (!this.quill) {
+      return undefined;
+    }
+
+    const elementos = Array.from(this.quill.root.querySelectorAll<HTMLElement>(`${COMENTARIO_TAG}[${COMENTARIO_ID_ATTRIBUTE}]`)).reverse();
+    return elementos.find(elemento => {
+      const blot = Quill.find(elemento);
+      return blot && this.quill!.getIndex(blot) + blot.length() === indice;
+    });
+  }
+
+  private selecaoEstaNoInicioAposComentario(comentario: HTMLElement, selecao: Selection): boolean {
+    const proximoNoTexto = this.getPrimeiroNoTextoAposElemento(comentario);
+    if (!proximoNoTexto) {
+      return false;
+    }
+
+    if (selecao.anchorNode === proximoNoTexto && selecao.anchorOffset === 0) {
+      return true;
+    }
+
+    const cursor = selecao.anchorNode?.parentElement?.closest('.ql-cursor');
+    return cursor?.parentNode === proximoNoTexto.parentNode && cursor.nextSibling === proximoNoTexto;
+  }
+
+  private getDestinoAoRedorIconeComentario(clientX: number, clientY: number): { indice: number; ultimoElemento: HTMLElement; dentroComentario: boolean } | undefined {
+    if (!this.quill || !this.comentarioOverlayContainer) {
+      return undefined;
+    }
+
+    const comentariosPorId = this.getElementosComentarioPorId();
+    const botoes = Array.from(this.comentarioOverlayContainer.querySelectorAll<HTMLButtonElement>('.comentario-texto-icone'));
+    for (const botao of botoes) {
+      const idSequenciaComentario = botao.dataset.idSequenciaComentario;
+      const elementos = idSequenciaComentario ? comentariosPorId.get(idSequenciaComentario) : undefined;
+      const ultimoElemento = elementos?.[elementos.length - 1];
+      if (!ultimoElemento) {
+        continue;
+      }
+      const blot = ultimoElemento ? Quill.find(ultimoElemento) : undefined;
+      if (!blot) {
+        continue;
+      }
+
+      const indiceAposComentario = this.quill.getIndex(blot) + blot.length();
+      const botaoRect = botao.getBoundingClientRect();
+      const dentroDoBotao = clientX >= botaoRect.left && clientX <= botaoRect.right && clientY >= botaoRect.top && clientY <= botaoRect.bottom;
+      if (dentroDoBotao) {
+        continue;
+      }
+
+      const ultimoNoTexto = this.getUltimoNoTexto(ultimoElemento);
+      const ultimoCaractereRect = ultimoNoTexto ? this.getRectCaractere(ultimoNoTexto, ultimoNoTexto.data.length - 1) : undefined;
+      if (ultimoCaractereRect) {
+        const limiteEsquerdo = ultimoCaractereRect.left + ultimoCaractereRect.width / 2;
+        const dentroDaAltura = clientY >= Math.min(botaoRect.top, ultimoCaractereRect.top) && clientY <= Math.max(botaoRect.bottom, ultimoCaractereRect.bottom);
+        if (dentroDaAltura && clientX >= limiteEsquerdo && clientX < botaoRect.left) {
+          return { indice: indiceAposComentario, ultimoElemento, dentroComentario: true };
+        }
+      }
+
+      const proximoCaractere = this.quill.getText(indiceAposComentario, 1);
+      const proximoNoTexto = this.getPrimeiroNoTextoAposElemento(ultimoElemento);
+      const proximoCaractereRect = proximoNoTexto ? this.getRectCaractere(proximoNoTexto, 0) : undefined;
+      if (proximoCaractere && proximoCaractere !== '\n' && proximoCaractereRect) {
+        const limiteDireito = proximoCaractereRect.left + proximoCaractereRect.width / 2;
+        const dentroDaAltura = clientY >= Math.min(botaoRect.top, proximoCaractereRect.top) && clientY <= Math.max(botaoRect.bottom, proximoCaractereRect.bottom);
+        if (dentroDaAltura && clientX > botaoRect.right && clientX <= limiteDireito) {
+          return { indice: indiceAposComentario, ultimoElemento, dentroComentario: false };
+        }
+      }
+    }
+
+    return undefined;
+  }
+
+  private posicionarSelecaoNoLimiteComentario(indice: number, elemento: HTMLElement, dentroComentario: boolean): void {
+    if (!this.quill) {
+      return;
+    }
+
+    const destino = dentroComentario ? this.getUltimoNoTexto(elemento) : this.getPrimeiroNoTextoAposElemento(elemento);
+
+    if (!destino) {
+      return;
+    }
+
+    const offset = dentroComentario ? destino.data.length : 0;
+    const selecaoQuill = (this.quill as any).selection;
+    if (selecaoQuill?.setNativeRange && selecaoQuill?.update) {
+      selecaoQuill.setNativeRange(destino, offset, destino, offset, true);
+      selecaoQuill.update(Quill.sources.SILENT);
+      this.quill.format(COMENTARIO_FORMAT, dentroComentario ? elemento.getAttribute(COMENTARIO_ID_ATTRIBUTE) : false, Quill.sources.SILENT);
+      return;
+    }
+
+    this.quill.setSelection(indice, 0, Quill.sources.SILENT);
+    const range = document.createRange();
+    range.setStart(destino, offset);
+    range.collapse(true);
+    const selecao = document.getSelection();
+    selecao?.removeAllRanges();
+    selecao?.addRange(range);
+  }
+
+  private getUltimoNoTexto(elemento: HTMLElement): Text | undefined {
+    const walker = document.createTreeWalker(elemento, NodeFilter.SHOW_TEXT);
+    let noTexto = walker.nextNode() as Text | null;
+    let ultimoNoTexto: Text | undefined;
+    while (noTexto) {
+      if (noTexto.data.length > 0) {
+        ultimoNoTexto = noTexto;
+      }
+      noTexto = walker.nextNode() as Text | null;
+    }
+    return ultimoNoTexto;
+  }
+
+  private getPrimeiroNoTextoAposElemento(elemento: HTMLElement): Text | undefined {
+    if (!this.quill) {
+      return undefined;
+    }
+
+    const walker = document.createTreeWalker(this.quill.root, NodeFilter.SHOW_TEXT);
+    let noTexto = walker.nextNode() as Text | null;
+    while (noTexto) {
+      const estaDepois = Boolean(elemento.compareDocumentPosition(noTexto) & Node.DOCUMENT_POSITION_FOLLOWING);
+      const pertenceAoCursorQuill = Boolean(noTexto.parentElement?.closest('.ql-cursor'));
+      if (estaDepois && !elemento.contains(noTexto) && !pertenceAoCursorQuill && noTexto.data.length > 0) {
+        return noTexto;
+      }
+      noTexto = walker.nextNode() as Text | null;
+    }
+    return undefined;
+  }
+
+  private getRectCaractere(noTexto: Text, indice: number): DOMRect | undefined {
+    if (indice < 0 || indice >= noTexto.data.length) {
+      return undefined;
+    }
+
+    const range = document.createRange();
+    range.setStart(noTexto, indice);
+    range.setEnd(noTexto, indice + 1);
+    return range.getBoundingClientRect();
+  }
 
   private agendarAtualizacaoIconesComentariosTexto = (): void => {
     if (!this.isModoTextoRicoComComentarios()) {

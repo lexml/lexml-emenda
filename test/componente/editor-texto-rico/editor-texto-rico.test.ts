@@ -301,6 +301,70 @@ describe('Testando lexml-emenda-editor-texto-rico (EditorTextoRicoComponent)', (
     expect(editorTextoRico.ajustaHtml(editorTextoRico.quill!.root.innerHTML)).to.not.include('data-comentario-fragmento-final');
   });
 
+  it('Deveria distinguir o cursor dentro e fora do comentário pelos lados do ícone', async () => {
+    editorTextoRico = await fixture<EditorTextoRicoComponent>(html`<lexml-emenda-editor-texto-rico .modo=${Modo.JUSTIFICATIVA}></lexml-emenda-editor-texto-rico>`);
+    editorTextoRico.setContent('<p><comentario id-sequencia-comentario="sc123">fortale</comentario>za</p>');
+    await new Promise(resolve => requestAnimationFrame(() => resolve(undefined)));
+
+    const botao = editorTextoRico.querySelector('.comentario-texto-icone') as HTMLButtonElement;
+    const botaoRect = botao.getBoundingClientRect();
+    const comentario = editorTextoRico.quill!.root.querySelector('comentario') as HTMLElement;
+    const textoComentario = comentario.lastChild as Text;
+    const textoPosterior = comentario.nextSibling as Text;
+    const rangeUltimoCaractere = document.createRange();
+    rangeUltimoCaractere.setStart(textoComentario, textoComentario.data.length - 1);
+    rangeUltimoCaractere.setEnd(textoComentario, textoComentario.data.length);
+    const ultimoCaractereRect = rangeUltimoCaractere.getBoundingClientRect();
+    const rangeProximoCaractere = document.createRange();
+    rangeProximoCaractere.setStart(textoPosterior, 0);
+    rangeProximoCaractere.setEnd(textoPosterior, 1);
+    const proximoCaractereRect = rangeProximoCaractere.getBoundingClientRect();
+
+    const eventoDentro = new MouseEvent('click', {
+      bubbles: true,
+      cancelable: true,
+      button: 0,
+      clientX: Math.min(botaoRect.left - 0.5, ultimoCaractereRect.left + ultimoCaractereRect.width * 0.75),
+      clientY: ultimoCaractereRect.top + ultimoCaractereRect.height / 2,
+    });
+    editorTextoRico.quill!.root.dispatchEvent(eventoDentro);
+
+    expect(editorTextoRico.quill!.getSelection()?.index).to.equal(7);
+    let nativeRange = document.getSelection()?.getRangeAt(0);
+    expect(comentario.contains(nativeRange?.startContainer || null)).to.be.true;
+
+    editorTextoRico.quill!.root.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0, clientX: proximoCaractereRect.left + 1 }));
+    editorTextoRico.quill!.root.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, button: 0, clientX: proximoCaractereRect.left + 1 }));
+    const eventoFora = new MouseEvent('click', {
+      bubbles: true,
+      cancelable: true,
+      button: 0,
+      clientX: proximoCaractereRect.left + 1,
+      clientY: proximoCaractereRect.top + proximoCaractereRect.height / 2,
+    });
+    editorTextoRico.quill!.root.dispatchEvent(eventoFora);
+
+    expect(editorTextoRico.quill!.getSelection()?.index).to.equal(7);
+    nativeRange = document.getSelection()?.getRangeAt(0);
+    expect(comentario.contains(nativeRange?.startContainer || null)).to.be.false;
+    const cursor = editorTextoRico.quill!.root.querySelector('.ql-cursor');
+    expect(cursor?.parentElement).to.equal(textoPosterior.parentElement);
+    expect(cursor?.nextSibling === textoPosterior).to.be.true;
+
+    const setaEsquerda = new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true, cancelable: true });
+    editorTextoRico.quill!.root.dispatchEvent(setaEsquerda);
+    nativeRange = document.getSelection()?.getRangeAt(0);
+    expect(setaEsquerda.defaultPrevented).to.be.true;
+    expect(comentario.contains(nativeRange?.startContainer || null)).to.be.true;
+
+    const setaDireita = new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true });
+    editorTextoRico.quill!.root.dispatchEvent(setaDireita);
+    nativeRange = document.getSelection()?.getRangeAt(0);
+    expect(setaDireita.defaultPrevented).to.be.true;
+    expect(comentario.contains(nativeRange?.startContainer || null)).to.be.false;
+    expect(editorTextoRico.quill!.root.querySelector('.ql-cursor')?.nextSibling === textoPosterior).to.be.true;
+  });
+
   it('Não deveria colar marcação de comentário copiada do editor', async () => {
     editorTextoRico.setContent('<p>Início fim.</p>');
     editorTextoRico.quill?.setSelection(7, 0);
