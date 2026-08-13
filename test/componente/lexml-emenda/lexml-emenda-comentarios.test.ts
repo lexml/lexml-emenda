@@ -704,4 +704,56 @@ describe('LexmlEmendaComponent - comentários', () => {
     expect(component.sequenciasComentario[0].idDispositivo).to.equal('ementa');
     expect(component.getIdsDispositivosComentados()).to.deep.equal(['ementa']);
   });
+
+  it('Deveria formatar a identificacao do item ate o artigo sem sinais editoriais nem agrupadores', () => {
+    const component = new LexmlEmendaComponent() as any;
+    const articulacao = createArticulacao();
+    const capitulo = criaDispositivo(articulacao, TipoDispositivo.capitulo.tipo);
+    capitulo.rotulo = 'CAPÍTULO II';
+    const artigo = criaDispositivo(capitulo, TipoDispositivo.artigo.tipo) as any;
+    artigo.numero = '2';
+    artigo.createRotulo(artigo);
+    const inciso = criaDispositivo(artigo.caput, TipoDispositivo.inciso.tipo);
+    inciso.numero = '2-1';
+    inciso.createRotulo(inciso);
+    const alinea = criaDispositivo(inciso, TipoDispositivo.alinea.tipo);
+    alinea.numero = '2';
+    alinea.createRotulo(alinea);
+    const item = criaDispositivo(alinea, TipoDispositivo.item.tipo);
+    item.numero = '1';
+    item.createRotulo(item);
+
+    expect(component.formatarIdentificacaoDispositivo(item)).to.equal('item 1 da alínea “b” do inciso II-1 do art. 2º');
+  });
+
+  it('Deveria formatar artigo sem ponto final nem agrupadores superiores', () => {
+    const component = new LexmlEmendaComponent() as any;
+    const articulacao = createArticulacao();
+    const secao = criaDispositivo(articulacao, TipoDispositivo.secao.tipo);
+    secao.rotulo = 'Seção I';
+    const artigo = criaDispositivo(secao, TipoDispositivo.artigo.tipo);
+    artigo.numero = '13';
+    artigo.createRotulo(artigo);
+
+    expect(component.formatarIdentificacaoDispositivo(artigo)).to.equal('art. 13');
+  });
+
+  it('Deveria formatar a hierarquia de agrupadores com capitalizacao e preposicoes corretas', () => {
+    const component = new LexmlEmendaComponent() as any;
+    const articulacao = createArticulacao();
+    const parte = criaDispositivo(articulacao, TipoDispositivo.parte.tipo);
+    parte.rotulo = 'PARTE ÚNICA';
+    const livro = criaDispositivo(parte, TipoDispositivo.livro.tipo);
+    livro.rotulo = 'LIVRO ÚNICO';
+    const titulo = criaDispositivo(livro, TipoDispositivo.titulo.tipo);
+    titulo.rotulo = 'TÍTULO ÚNICO';
+    const capitulo = criaDispositivo(titulo, TipoDispositivo.capitulo.tipo);
+    capitulo.rotulo = 'CAPÍTULO I';
+    const secao = criaDispositivo(capitulo, TipoDispositivo.secao.tipo);
+    secao.rotulo = 'Seção Única';
+    const subsecao = criaDispositivo(secao, TipoDispositivo.subsecao.tipo);
+    subsecao.rotulo = 'Subseção Única';
+
+    expect(component.formatarIdentificacaoDispositivo(subsecao)).to.equal('Subseção Única da Seção Única do Capítulo I do Título Único do Livro Único da Parte Única');
+  });
 });

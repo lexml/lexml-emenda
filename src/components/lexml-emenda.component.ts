@@ -1444,6 +1444,7 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
           flex: 1;
           min-width: 0;
           overflow: hidden;
+          padding: 0 2px;
           text-overflow: ellipsis;
           white-space: pre;
         }
@@ -1659,6 +1660,7 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
           flex: 1;
           min-width: 0;
           overflow: hidden;
+          padding: 0 2px;
           text-overflow: ellipsis;
           white-space: pre;
         }
@@ -2537,19 +2539,32 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
   private formatarIdentificacaoDispositivo(dispositivo: Dispositivo): string {
     const partes: string[] = [];
     let atual: Dispositivo | undefined = dispositivo;
+    const dispositivosVisitados = new Set<Dispositivo>();
 
-    while (atual && atual.tipo !== TipoDispositivo.articulacao.tipo && partes.length < 6) {
+    while (atual && atual.tipo !== TipoDispositivo.articulacao.tipo && !dispositivosVisitados.has(atual)) {
+      dispositivosVisitados.add(atual);
       if (atual.tipo !== TipoDispositivo.caput.tipo || atual === dispositivo) {
         const parte = this.formatarParteIdentificacaoDispositivo(atual);
-        parte && partes.push(parte);
+        if (parte) {
+          const preposicao = partes.length ? this.getPreposicaoIdentificacaoDispositivo(atual) : '';
+          partes.push(`${preposicao}${parte}`);
+        }
+      }
+      if (atual.tipo === TipoDispositivo.artigo.tipo) {
+        break;
       }
       atual = atual.pai;
     }
 
-    return partes.length ? partes.join(' do ') : 'Dispositivo comentado';
+    return partes.length ? partes.join(' ') : 'Dispositivo comentado';
   }
 
   private formatarParteIdentificacaoDispositivo(dispositivo: Dispositivo): string {
+    const identificacao = dispositivo.getNumeracaoComRotuloParaComandoEmenda?.(dispositivo)?.trim();
+    if (identificacao) {
+      return identificacao;
+    }
+
     const numero = dispositivo.rotulo || dispositivo.numero || '';
 
     switch (dispositivo.tipo) {
@@ -2570,6 +2585,11 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
       default:
         return `${this.getDescricaoTipoDispositivo(dispositivo.tipo)} ${numero}`.trim();
     }
+  }
+
+  private getPreposicaoIdentificacaoDispositivo(dispositivo: Dispositivo): string {
+    const preposicao = dispositivo.pronomePossessivoSingular?.trim();
+    return `${preposicao || 'de'} `;
   }
 
   private getDescricaoTipoDispositivo(tipo?: string): string {
