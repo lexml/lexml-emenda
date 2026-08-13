@@ -174,6 +174,18 @@ describe('LexmlEmendaComponent - comentários', () => {
     expect(component.sequenciasComentario[1].comentarios).to.have.length(1);
   });
 
+  it('Deveria preservar espaços internos e quebras de linha do comentário', () => {
+    const component = new LexmlEmendaComponent() as any;
+    const texto = 'Vou adicionar 3 pontos:\n\n-Ponto 1: tudo ok\n  -Ponto 2: tudo certo';
+    component.sequenciasComentario = [criarSequenciaComentarioComId('sc1', criarComentario('Texto original'))];
+    component.idSequenciaComentarioRespostaAtual = 'sc1';
+    Object.defineProperty(component, 'comentarioTextarea', { value: { value: texto }, configurable: true });
+
+    component.responderComentarioSelecionado();
+
+    expect(component.sequenciasComentario[0].comentarios[1].texto).to.equal(texto);
+  });
+
   it('Não deveria adicionar resposta com texto vazio', () => {
     const component = new LexmlEmendaComponent() as any;
     component.sequenciasComentario = [criarSequenciaComentario(criarComentario('Texto original'))];

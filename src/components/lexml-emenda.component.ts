@@ -1498,6 +1498,8 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
           font-size: 0.88rem;
           line-height: 1.45;
           margin: 0;
+          overflow-wrap: anywhere;
+          white-space: pre-wrap;
         }
 
         .comentario-item__acoes {
