@@ -2025,6 +2025,13 @@ export class EditorComponent extends connect(rootStore)(LitElement) {
         }
       }
     });
+
+    // O indicador pode estar dentro do container de revisao removido ou precisar
+    // ser transferido para o novo container. Sincroniza apenas as linhas afetadas.
+    new Set([...uuidsElementosSemRevisao, ...uuidsElementosComRevisao]).forEach(uuid => {
+      const linha = this.quill.getLinha(uuid);
+      linha && this.atualizarIndicadorComentarioLinha(linha, this.isLinhaComComentario(linha));
+    });
   }
 
   private atualizarStatusBotoesRevisao(): void {
