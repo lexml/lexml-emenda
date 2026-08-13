@@ -50,7 +50,7 @@ import { StateEvent, StateType } from '../redux/state';
 import { limparRevisaoAction } from '../model/lexml/acao/limparRevisoes';
 import { aplicarAlteracoesEmendaAction } from '../model/lexml/acao/aplicarAlteracoesEmenda';
 import { buildContent, getUrn } from '../model/lexml/documento/conversor/buildProjetoNormaFromJsonix';
-import { buscaDispositivoById, findDispositivoByUuid2 } from '../model/lexml/hierarquia/hierarquiaUtil';
+import { buscaDispositivoById, findDispositivoByUuid2, getArtigoDoProjeto, isDispositivoAlteracao } from '../model/lexml/hierarquia/hierarquiaUtil';
 import { TipoDispositivo } from '../model/lexml/tipo/tipoDispositivo';
 import { createElemento, getElementos } from '../model/elemento/elementoUtil';
 import { generoFromLetra } from '../model/dispositivo/genero';
@@ -2541,6 +2541,7 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
   private formatarIdentificacaoDispositivo(dispositivo: Dispositivo): string {
     const partes: string[] = [];
     let atual: Dispositivo | undefined = dispositivo;
+    let artigoIdentificado: Dispositivo | undefined;
     const dispositivosVisitados = new Set<Dispositivo>();
 
     while (atual && atual.tipo !== TipoDispositivo.articulacao.tipo && !dispositivosVisitados.has(atual)) {
@@ -2553,12 +2554,28 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
         }
       }
       if (atual.tipo === TipoDispositivo.artigo.tipo) {
+        artigoIdentificado = atual;
         break;
       }
       atual = atual.pai;
     }
 
-    return partes.length ? partes.join(' ') : 'Dispositivo comentado';
+    const identificacao = partes.length ? partes.join(' ') : 'Dispositivo comentado';
+    if (!isDispositivoAlteracao(dispositivo)) {
+      return identificacao;
+    }
+
+    const artigoProjeto = getArtigoDoProjeto(dispositivo);
+    if (!artigoProjeto || artigoProjeto === artigoIdentificado) {
+      return identificacao;
+    }
+
+    const identificacaoArtigoProjeto = this.formatarParteIdentificacaoDispositivo(artigoProjeto);
+    if (!identificacaoArtigoProjeto) {
+      return identificacao;
+    }
+
+    return `${identificacao.charAt(0).toUpperCase()}${identificacao.slice(1)} citado no ${identificacaoArtigoProjeto}`;
   }
 
   private formatarParteIdentificacaoDispositivo(dispositivo: Dispositivo): string {

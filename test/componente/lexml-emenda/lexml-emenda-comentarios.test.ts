@@ -4,7 +4,7 @@ import { LexmlEmendaComponent } from '../../../src/components/lexml-emenda.compo
 import { Comentario, SequenciaComentario, TipoLocalComentario } from '../../../src/model/emenda/emenda';
 import { Usuario } from '../../../src/model/revisao/usuario';
 import { rootStore } from '../../../src/redux/store';
-import { createArticulacao, criaDispositivo } from '../../../src/model/lexml/dispositivo/dispositivoLexmlFactory';
+import { createAlteracao, createArticulacao, criaDispositivo } from '../../../src/model/lexml/dispositivo/dispositivoLexmlFactory';
 import { TipoDispositivo } from '../../../src/model/lexml/tipo/tipoDispositivo';
 
 const criarUsuario = (id: string, nome: string): Usuario => Object.assign(new Usuario(), { id, nome });
@@ -748,6 +748,24 @@ describe('LexmlEmendaComponent - comentários', () => {
     artigo.createRotulo(artigo);
 
     expect(component.formatarIdentificacaoDispositivo(artigo)).to.equal('art. 13');
+  });
+
+  it('Deveria identificar dispositivo de alteração com o artigo citado e o artigo do projeto', () => {
+    const component = new LexmlEmendaComponent() as any;
+    const articulacao = createArticulacao();
+    const artigoProjeto = criaDispositivo(articulacao, TipoDispositivo.artigo.tipo) as any;
+    artigoProjeto.numero = '26';
+    artigoProjeto.createRotulo(artigoProjeto);
+    createAlteracao(artigoProjeto);
+
+    const artigoCitado = criaDispositivo(artigoProjeto.alteracoes, TipoDispositivo.artigo.tipo) as any;
+    artigoCitado.numero = '3';
+    artigoCitado.createRotulo(artigoCitado);
+    const paragrafoUnico = criaDispositivo(artigoCitado, TipoDispositivo.paragrafo.tipo) as any;
+    paragrafoUnico.createNumeroFromRotulo('Parágrafo único.');
+    paragrafoUnico.createRotulo(paragrafoUnico);
+
+    expect(component.formatarIdentificacaoDispositivo(paragrafoUnico)).to.equal('Parágrafo único do art. 3º citado no art. 26');
   });
 
   it('Deveria formatar a hierarquia de agrupadores com capitalizacao e preposicoes corretas', () => {
