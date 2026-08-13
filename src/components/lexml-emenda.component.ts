@@ -1785,6 +1785,7 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
                 @onchange=${this.onChange}
                 @abrir-modal-comentario-articulacao=${this.abrirModalAdicionarComentarioArticulacao}
                 @selecionar-comentario-articulacao=${this.selecionarComentarioArticulacaoPorDispositivo}
+                @abrir-modal-lista-comentarios=${this.abrirModalListaComentarios}
               ></lexml-emenda-eta>
               <lexml-emenda-editor-texto-rico
                 style="display: ${this.isEmendaTextoLivre() ? 'block' : 'none'}"
@@ -1944,8 +1945,7 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
 
     if (this.idSequenciaComentarioAtual === idAtual) {
       if (idAtual && abrirAbaComentarios) {
-        this._tabsDireita?.show('comentarios');
-        this.rolarParaSequenciaComentario(idAtual);
+        this.exibirComentarioAtualNaLista();
       } else if (idAtual) {
         this.rolarParaSequenciaComentario(idAtual);
       }
@@ -1955,8 +1955,7 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
     this.idSequenciaComentarioAtual = idAtual;
 
     if (idAtual && abrirAbaComentarios) {
-      this._tabsDireita?.show('comentarios');
-      this.rolarParaSequenciaComentario(idAtual);
+      this.exibirComentarioAtualNaLista();
       return;
     }
 
@@ -2029,6 +2028,11 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
   }
 
   private getPainelComentariosVisivel(): HTMLElement | undefined {
+    const comentariosModal = this.listaComentariosModal?.querySelector?.('.comentarios') as HTMLElement | null;
+    if (this.modalListaComentariosAberto && comentariosModal && this.isElementoVisivel(comentariosModal)) {
+      return comentariosModal;
+    }
+
     const painel = this.querySelector('sl-tab-panel[name="comentarios"]') as HTMLElement | null;
     return painel && this.isElementoVisivel(painel) ? painel : undefined;
   }
@@ -2388,8 +2392,7 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
 
     this.atualizarIdDispositivoSequenciaComentario(sequenciaComentario);
     this.idSequenciaComentarioAtual = sequenciaComentario.id;
-    this._tabsDireita?.show('comentarios');
-    this.rolarParaComentarioAtual();
+    this.exibirComentarioAtualNaLista();
   };
 
   private getIdentificacaoDispositivoComentario(idDispositivo?: string, elemento?: Elemento, sequenciaComentario?: SequenciaComentario): string {
@@ -2718,6 +2721,16 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
 
   private isModoMobileOuTablet(): boolean {
     return window.innerWidth <= this.TABLET_WIDTH;
+  }
+
+  private exibirComentarioAtualNaLista(): void {
+    if (this.isModoMobileOuTablet()) {
+      this.abrirModalListaComentarios();
+      return;
+    }
+
+    this._tabsDireita?.show('comentarios');
+    this.rolarParaComentarioAtual();
   }
 
   private abrirModalAdicionarComentario = (event?: CustomEvent): void => {

@@ -264,7 +264,7 @@ describe('LexmlEmendaComponent - comentários', () => {
     expect(component.idSequenciaComentarioAtual).to.be.undefined;
   });
 
-  it('Deveria abrir modal responsiva da lista de comentarios', () => {
+  it('Deveria abrir modal responsiva da lista de comentarios', async () => {
     const component = new LexmlEmendaComponent() as any;
     let modalAberto = false;
     Object.defineProperty(component, 'listaComentariosModal', {
@@ -275,11 +275,94 @@ describe('LexmlEmendaComponent - comentários', () => {
       },
       configurable: true,
     });
+    Object.defineProperty(component, 'updateComplete', { value: Promise.resolve(true), configurable: true });
     component.rolarParaComentarioAtual = (): void => undefined;
 
     component.abrirModalListaComentarios();
+    await component.updateComplete;
 
     expect(modalAberto).to.be.true;
+  });
+
+  it('Deveria abrir a modal responsiva com o comentario do texto selecionado pelo icone', () => {
+    const component = new LexmlEmendaComponent() as any;
+    component.sequenciasComentario = [criarSequenciaComentarioComId('sc1', criarComentario('Texto original'))];
+    component.isModoMobileOuTablet = (): boolean => true;
+    let modalAberto = false;
+    let abaDesktopAberta = false;
+    component.abrirModalListaComentarios = (): void => {
+      modalAberto = true;
+    };
+    Object.defineProperty(component, '_tabsDireita', {
+      value: {
+        show: (): void => {
+          abaDesktopAberta = true;
+        },
+      },
+      configurable: true,
+    });
+
+    component.atualizarComentarioAtual(
+      new CustomEvent('comentario-selecionado', {
+        detail: { idSequenciaComentario: 'sc1', abrirAbaComentarios: true },
+      })
+    );
+
+    expect(component.idSequenciaComentarioAtual).to.equal('sc1');
+    expect(modalAberto).to.be.true;
+    expect(abaDesktopAberta).to.be.false;
+  });
+
+  it('Deveria abrir a modal responsiva com o comentario do dispositivo selecionado pelo icone', () => {
+    const component = new LexmlEmendaComponent() as any;
+    const sequenciaDispositivo = Object.assign(criarSequenciaComentarioComId('scDispositivo', criarComentario('Comentario do inciso')), {
+      local: TipoLocalComentario.TEXTO,
+      idDispositivo: 'art1_inc1',
+    });
+    component.sequenciasComentario = [sequenciaDispositivo];
+    component.isModoMobileOuTablet = (): boolean => true;
+    component.atualizarIdDispositivoSequenciaComentario = (): void => undefined;
+    let modalAberto = false;
+    component.abrirModalListaComentarios = (): void => {
+      modalAberto = true;
+    };
+
+    component.selecionarComentarioArticulacaoPorDispositivo(
+      new CustomEvent('selecionar-comentario-articulacao', {
+        detail: { idDispositivo: 'art1_inc1' },
+      })
+    );
+
+    expect(component.idSequenciaComentarioAtual).to.equal('scDispositivo');
+    expect(modalAberto).to.be.true;
+  });
+
+  it('Deveria manter a abertura da aba lateral ao selecionar comentario pelo icone no desktop', () => {
+    const component = new LexmlEmendaComponent() as any;
+    component.sequenciasComentario = [criarSequenciaComentarioComId('sc1', criarComentario('Texto original'))];
+    component.isModoMobileOuTablet = (): boolean => false;
+    let abaAberta = '';
+    let solicitouRolagem = false;
+    Object.defineProperty(component, '_tabsDireita', {
+      value: {
+        show: (aba: string): void => {
+          abaAberta = aba;
+        },
+      },
+      configurable: true,
+    });
+    component.rolarParaComentarioAtual = (): void => {
+      solicitouRolagem = true;
+    };
+
+    component.atualizarComentarioAtual(
+      new CustomEvent('comentario-selecionado', {
+        detail: { idSequenciaComentario: 'sc1', abrirAbaComentarios: true },
+      })
+    );
+
+    expect(abaAberta).to.equal('comentarios');
+    expect(solicitouRolagem).to.be.true;
   });
 
   it('Deveria selecionar sequencia clicada, abrir justificativa e posicionar cursor no comentario', async () => {
