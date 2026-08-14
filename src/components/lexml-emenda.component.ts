@@ -840,25 +840,9 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
       this.ajustarAltura();
     });
 
-    const badgeAtalhos = this._tabsDireita?.querySelector('sl-tab[panel="atalhos"] #badgeAtalhos') as any;
-    if (badgeAtalhos) {
-      const naoPulsarBadgeAtalhos = localStorage.getItem('naoPulsarBadgeAtalhos');
-      if (!naoPulsarBadgeAtalhos) {
-        badgeAtalhos.pulse = true;
-        badgeAtalhos.setAttribute('variant', 'warning');
-      }
-    }
-
     this._tabsDireita?.addEventListener('sl-tab-show', (event: any) => {
       const tabName = event.detail.name;
-      if (tabName === 'atalhos') {
-        const badge = (event.target as Element).querySelector('sl-tab[panel="atalhos"] sl-badge') as any;
-        if (badge) {
-          badge.pulse = false;
-          badge.setAttribute('variant', 'primary');
-        }
-        localStorage.setItem('naoPulsarBadgeAtalhos', 'true');
-      } else if (tabName === 'comentarios') {
+      if (tabName === 'comentarios') {
         this.rolarParaComentarioAtual();
       } else {
         this.limparComentarioAtual();
@@ -3170,15 +3154,8 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
           }
         });
         this.localizarNotaRodape(idNotaRodape);
-      } else {
-        this.removerPulsarNotaRodape(idNotaRodape);
       }
     }
-  }
-
-  removerPulsarNotaRodape(idNotaRodape: any): void {
-    const notaRodapeElement = this.querySelector(`.ql-editor lexml-emenda-nota-rodape[id-lexml-emenda-nota-rodape="${idNotaRodape}"]`);
-    notaRodapeElement?.classList.remove('pulse');
   }
 
   editarNotaRodape(event: any): void {
