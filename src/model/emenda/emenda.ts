@@ -8,6 +8,7 @@ export class Emenda {
   aplicacao = '';
   versaoAplicacao = '';
   modoEdicao = ModoEdicaoEmenda.EMENDA;
+  anexoParecer = false;
   // Metadados específicos de sistemas
   metadados: MetadadosEmenda = {};
   pendenciasPreenchimento: string[] = [];

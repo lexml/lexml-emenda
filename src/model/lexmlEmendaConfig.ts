@@ -1,4 +1,5 @@
 export class LexmlEmendaConfig {
+  anexoParecer = false;
   urlConsultaParlamentares = 'api/parlamentares';
   urlAutocomplete = 'api/autocomplete-norma';
   urlComissoes?: string;

@@ -119,6 +119,7 @@ export class DemoView extends LitElement {
   private elLexmlEmendaComando!: ComandoEmendaComponent;
 
   @state() modo = '';
+  @state() anexoParecer = false;
   @state() projetoNorma: any = {};
   @state() proposicaoCorrente = new RefProposicaoEmendada();
 
@@ -128,6 +129,7 @@ export class DemoView extends LitElement {
   constructor() {
     super();
     this.emendaConfig = new LexmlEmendaConfig();
+    this.emendaConfig.anexoParecer = this.anexoParecer;
     this.emendaConfig.urlComissoes = 'https://run.mocky.io/v3/fee83f1d-e204-4746-adf6-c0f617156a6a';
   }
 
@@ -157,7 +159,9 @@ export class DemoView extends LitElement {
 
     const key = `${sigla.toLowerCase()}_${numero}_${ano}`;
     let el = this.getElement(`option[value="${key}"]`);
-    el ? (el.selected = true) : undefined;
+    if (el) {
+      el.selected = true;
+    }
 
     el = this.getElement('#optEmenda');
     el.disabled = false;
@@ -305,6 +309,8 @@ export class DemoView extends LitElement {
           const result = JSON.parse(e.target.result as string);
           const emenda = 'emenda' in result ? result.emenda : result;
           this.modo = emenda.modoEdicao;
+          this.anexoParecer = emenda.anexoParecer ?? false;
+          this.emendaConfig.anexoParecer = this.anexoParecer;
           this.projetoNorma = await this.getProjetoNormaJsonixFromEmenda(emenda);
 
           const params = new LexmlEmendaParametrosEdicao();
@@ -447,6 +453,17 @@ export class DemoView extends LitElement {
             <option value="emendaTextoLivre" id="optEmendaTextoLivre">Emenda Texto Livre</option>
             <option value="emendaSubstituicaoTermo" id="optEmendaSubstituicaoTermo">Emenda Substituição de termo</option>
           </select>
+          <label
+            ><input
+              type="checkbox"
+              .checked=${this.anexoParecer}
+              @change=${(event: Event): void => {
+                this.anexoParecer = (event.target as HTMLInputElement).checked;
+                this.emendaConfig.anexoParecer = this.anexoParecer;
+              }}
+            />
+            Anexo de parecer</label
+          >
           <input type="button" value="Ok" @click=${this.executar} />
           <input type="button" value="Trocar modo" @click=${this.trocarModo} ?disabled="${!this.modo}" />
         </div>
