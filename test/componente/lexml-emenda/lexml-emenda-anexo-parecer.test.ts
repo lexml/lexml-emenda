@@ -10,6 +10,15 @@ describe('LexmlEmendaComponent - anexo de parecer', () => {
     expect(new Emenda().anexoParecer).to.be.false;
   });
 
+  it('Deveria considerar anexoParecer=false em JSON antigo sem o atributo', () => {
+    const emendaAntiga = JSON.parse('{"justificativa":"<p>Justificativa</p>"}') as Emenda;
+    const config = new LexmlEmendaConfig();
+
+    config.anexoParecer = emendaAntiga.anexoParecer ?? false;
+
+    expect(config.anexoParecer).to.be.false;
+  });
+
   it('Não deveria devolver dados que não se aplicam ao anexo de parecer', () => {
     const component = new LexmlEmendaComponent() as any;
     const emenda = new Emenda();
@@ -44,6 +53,25 @@ describe('LexmlEmendaComponent - anexo de parecer', () => {
     expect((component.querySelector('lexml-emenda-autoria')?.parentElement as HTMLElement).style.display).to.equal('none');
     expect(component.querySelector('lexml-emenda-destino')).not.to.be.null;
     expect(component.querySelector('lexml-emenda-opcoes-impressao')).not.to.be.null;
+  });
+
+  it('Deveria manter somente o painel de texto visível ao desativar o modo anexo de parecer', async () => {
+    const component = await fixture<LexmlEmendaComponent>(html`<lexml-emenda></lexml-emenda>`);
+    (component as any).anexoParecer = true;
+    await elementUpdated(component);
+
+    (component as any).anexoParecer = false;
+    await elementUpdated(component);
+    (component as any).sincronizarESelecionarAba((component as any)._tabsEsquerda, 'lexml-emenda-eta');
+
+    const painelTexto = component.querySelector('sl-tab-panel[name="lexml-emenda-eta"]') as any;
+    const painelJustificativa = component.querySelector('sl-tab-panel[name="justificativa"]') as any;
+    await Promise.all([painelTexto.updateComplete, painelJustificativa.updateComplete]);
+
+    expect(painelTexto.active).to.be.true;
+    expect(painelTexto.style.display).to.equal('block');
+    expect(painelJustificativa.active).to.be.false;
+    expect(painelJustificativa.style.display).to.equal('none');
   });
 
   it('Não deveria validar a ausência de justificação no modo anexo de parecer', () => {

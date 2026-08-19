@@ -444,7 +444,7 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
     return revisoes;
   }
 
-  async inicializarEdicao(params: LexmlEmendaParametrosEdicao) {
+  async inicializarEdicao(params: LexmlEmendaParametrosEdicao): Promise<void> {
     try {
       this._lexmlEmendaComando.emenda = [];
       this.modo = params.modo;
@@ -492,25 +492,19 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
         this.desativarMarcaRevisao();
       }
 
-      this._tabsEsquerda.show('lexml-emenda-eta');
-
+      let nomeAbaDireita: string | undefined;
       if (this.modo.startsWith('emenda') && !this.isEmendaTextoLivre()) {
-        setTimeout(() => {
-          this._tabsDireita?.show('comando');
-        });
+        nomeAbaDireita = 'comando';
       } else if (this.anexoParecer && this.tabIsVisible('comentarios')) {
-        setTimeout(() => {
-          this._tabsDireita?.show('comentarios');
-        });
-      } else {
-        if (!this.anexoParecer) {
-          setTimeout(() => {
-            this._tabsDireita?.show('notas');
-          });
-        }
+        nomeAbaDireita = 'comentarios';
+      } else if (!this.anexoParecer) {
+        nomeAbaDireita = 'notas';
       }
 
       this.updateView();
+      await this.updateComplete;
+      this.sincronizarESelecionarAba(this._tabsEsquerda, 'lexml-emenda-eta');
+      this.sincronizarESelecionarAba(this._tabsDireita, nomeAbaDireita);
     } catch (err) {
       console.error(err);
       this.emitirEventoFatalError(err);
@@ -1087,6 +1081,24 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
     this.updateState = new Date();
   }
 
+  private sincronizarESelecionarAba(tabGroup: any, nomePainel?: string): void {
+    if (!tabGroup) return;
+
+    tabGroup.syncTabsAndPanels();
+    if (!nomePainel) return;
+
+    const aba = tabGroup.getAllTabs().find(tab => tab.panel === nomePainel);
+    if (!aba) return;
+
+    if (tabGroup.getActiveTab() === aba) {
+      tabGroup.getAllTabs(true).forEach(tab => (tab.active = tab === aba));
+      tabGroup.getAllPanels().forEach(panel => (panel.active = panel.name === nomePainel));
+      tabGroup.syncIndicator();
+    } else {
+      tabGroup.setActiveTab(aba, { emitEvents: false });
+    }
+  }
+
   render(): TemplateResult {
     return html`
       ${shoelaceLightThemeStyles} ${quillSnowStyles} ${editorStyles}
@@ -1107,6 +1119,9 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
         }
         sl-tab-panel.overflow-hidden::part(base) {
           overflow-y: auto;
+        }
+        sl-tab-panel.painel-anexo-parecer {
+          display: none !important;
         }
         lexml-emenda-comando {
           font-family: var(--eta-font-serif);
@@ -1808,7 +1823,7 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
               ></lexml-emenda-editor-texto-rico>
               <lexml-emenda-substituicao-termo style="display: ${this.isEmendaSubstituicaoTermo() ? 'block' : 'none'}" @onchange=${this.onChange}></lexml-emenda-substituicao-termo>
             </sl-tab-panel>
-            <sl-tab-panel name="justificativa" class="overflow-hidden" style="${this.anexoParecer ? 'display: none' : ''}">
+            <sl-tab-panel name="justificativa" class="overflow-hidden ${this.anexoParecer ? 'painel-anexo-parecer' : ''}">
               <lexml-emenda-editor-texto-rico
                 .lexmlEtaConfig=${this.lexmlEmendaConfig}
                 modo="justificativa"
