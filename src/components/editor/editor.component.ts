@@ -307,13 +307,13 @@ export class EditorComponent extends connect(rootStore)(LitElement) {
 
           <input type="button" @click=${this.artigoOndeCouber} class="${'ql-hidden'} btn--artigoOndeCouber" value="Propor artigo onde couber" title="Artigo onde couber"></input>
           <div class="mobile-buttons">
-            <button type="button" class="mobile-button btn-comentarios" title="Comentários" @click=${this.abrirModalListaComentarios}>
-              <sl-icon name="chat-left-text"></sl-icon>
-              <span>Comentários</span>
-            </button>
             <button class="mobile-button btn-comando" title="Comando" @click=${this.showComandoEmendaModal}>
               <sl-icon name="code"></sl-icon>
               <span>Comando</span>
+            </button>
+            <button type="button" class="mobile-button btn-comentarios" title="Comentários" @click=${this.abrirModalListaComentarios}>
+              <sl-icon name="chat-left-text"></sl-icon>
+              <span>Comentários</span>
             </button>
             <button class="mobile-button btn-dicas" title="Dicas" @click=${this.showAjudaModal}>
               <sl-icon name="lightbulb"></sl-icon>
