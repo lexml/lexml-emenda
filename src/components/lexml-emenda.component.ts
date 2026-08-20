@@ -50,7 +50,7 @@ import { StateEvent, StateType } from '../redux/state';
 import { limparRevisaoAction } from '../model/lexml/acao/limparRevisoes';
 import { aplicarAlteracoesEmendaAction } from '../model/lexml/acao/aplicarAlteracoesEmenda';
 import { buildContent, getUrn } from '../model/lexml/documento/conversor/buildProjetoNormaFromJsonix';
-import { buscaDispositivoById, findDispositivoByUuid2 } from '../model/lexml/hierarquia/hierarquiaUtil';
+import { buscaDispositivoById, findDispositivoByUuid2, getArtigoDoProjeto, isDispositivoAlteracao } from '../model/lexml/hierarquia/hierarquiaUtil';
 import { TipoDispositivo } from '../model/lexml/tipo/tipoDispositivo';
 import { createElemento, getElementos } from '../model/elemento/elementoUtil';
 import { generoFromLetra } from '../model/dispositivo/genero';
@@ -698,7 +698,16 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
     let houveAtualizacao = false;
 
     this.sequenciasComentario.forEach(seq => {
-      if (!this.isComentarioArticulacao(seq) || this.uuid2DispositivoPorSequenciaComentario.has(seq.id)) {
+      if (!this.isComentarioArticulacao(seq)) {
+        return;
+      }
+
+      if (this.isComentarioEmenta(seq)) {
+        houveAtualizacao = this.uuid2DispositivoPorSequenciaComentario.delete(seq.id) || houveAtualizacao;
+        return;
+      }
+
+      if (this.uuid2DispositivoPorSequenciaComentario.has(seq.id)) {
         return;
       }
 
@@ -1307,14 +1316,13 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
         }
 
         .comentarios__ordenacao {
-          width: 112px;
+          width: 120px;
           height: 26px;
           border: 1px solid var(--sl-color-neutral-200);
           border-radius: 4px;
           color: var(--sl-color-neutral-700);
           font: inherit;
           font-size: 0.78rem;
-          padding: 0 20px 0 6px;
           background: white;
         }
 
@@ -1469,6 +1477,7 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
           flex: 1;
           min-width: 0;
           overflow: hidden;
+          padding: 0 2px;
           text-overflow: ellipsis;
           white-space: pre;
         }
@@ -1522,6 +1531,8 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
           font-size: 0.88rem;
           line-height: 1.45;
           margin: 0;
+          overflow-wrap: anywhere;
+          white-space: pre-wrap;
         }
 
         .comentario-item__acoes {
@@ -1684,6 +1695,7 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
           flex: 1;
           min-width: 0;
           overflow: hidden;
+          padding: 0 2px;
           text-overflow: ellipsis;
           white-space: pre;
         }
@@ -1810,6 +1822,7 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
                 @onchange=${this.onChange}
                 @abrir-modal-comentario-articulacao=${this.abrirModalAdicionarComentarioArticulacao}
                 @selecionar-comentario-articulacao=${this.selecionarComentarioArticulacaoPorDispositivo}
+                @abrir-modal-lista-comentarios=${this.abrirModalListaComentarios}
               ></lexml-emenda-eta>
               <lexml-emenda-editor-texto-rico
                 style="display: ${this.isEmendaTextoLivre() ? 'block' : 'none'}"
@@ -1951,10 +1964,9 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
         <div class="comentarios__cabecalho">
           <h4>Comentários</h4>
           <label class="comentarios__ordenacao-container">
-            Ordenar
             <select class="comentarios__ordenacao" aria-label="Ordenação dos comentários" .value=${this.ordenacaoComentarios} @change=${this.alterarOrdenacaoComentarios}>
               <option value="texto">Ordem no texto</option>
-              <option value="recentes">Recentes</option>
+              <option value="recentes">Mais recentes</option>
             </select>
           </label>
         </div>
@@ -1978,8 +1990,7 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
 
     if (this.idSequenciaComentarioAtual === idAtual) {
       if (idAtual && abrirAbaComentarios) {
-        this._tabsDireita?.show('comentarios');
-        this.rolarParaSequenciaComentario(idAtual);
+        this.exibirComentarioAtualNaLista();
       } else if (idAtual) {
         this.rolarParaSequenciaComentario(idAtual);
       }
@@ -1989,8 +2000,7 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
     this.idSequenciaComentarioAtual = idAtual;
 
     if (idAtual && abrirAbaComentarios) {
-      this._tabsDireita?.show('comentarios');
-      this.rolarParaSequenciaComentario(idAtual);
+      this.exibirComentarioAtualNaLista();
       return;
     }
 
@@ -2063,6 +2073,11 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
   }
 
   private getPainelComentariosVisivel(): HTMLElement | undefined {
+    const comentariosModal = this.listaComentariosModal?.querySelector?.('.comentarios') as HTMLElement | null;
+    if (this.modalListaComentariosAberto && comentariosModal && this.isElementoVisivel(comentariosModal)) {
+      return comentariosModal;
+    }
+
     const painel = this.querySelector('sl-tab-panel[name="comentarios"]') as HTMLElement | null;
     return painel && this.isElementoVisivel(painel) ? painel : undefined;
   }
@@ -2369,6 +2384,10 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
     return !!seq?.idDispositivo && seq.local === TipoLocalComentario.TEXTO;
   }
 
+  private isComentarioEmenta(seq?: SequenciaComentario): boolean {
+    return this.isComentarioArticulacao(seq) && seq?.idDispositivo === 'ementa';
+  }
+
   private getIdsDispositivosComentados(): string[] {
     const sequenciasArticulacao = this.sequenciasComentario.filter(seq => this.isComentarioArticulacao(seq));
     const key = sequenciasArticulacao.map(seq => `${seq.id}:${seq.idDispositivo || ''}:${this.uuid2DispositivoPorSequenciaComentario.get(seq.id) || ''}`).join('|');
@@ -2402,7 +2421,7 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
         return sequenciaPorUuid2;
       }
 
-      return sequenciasArticulacao.find(seq => !this.uuid2DispositivoPorSequenciaComentario.has(seq.id) && seq.idDispositivo === idDispositivo);
+      return sequenciasArticulacao.find(seq => (this.isComentarioEmenta(seq) || !this.uuid2DispositivoPorSequenciaComentario.has(seq.id)) && seq.idDispositivo === idDispositivo);
     }
 
     return sequenciasArticulacao.find(seq => seq.idDispositivo === idDispositivo);
@@ -2418,8 +2437,7 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
 
     this.atualizarIdDispositivoSequenciaComentario(sequenciaComentario);
     this.idSequenciaComentarioAtual = sequenciaComentario.id;
-    this._tabsDireita?.show('comentarios');
-    this.rolarParaComentarioAtual();
+    this.exibirComentarioAtualNaLista();
   };
 
   private getIdentificacaoDispositivoComentario(idDispositivo?: string, elemento?: Elemento, sequenciaComentario?: SequenciaComentario): string {
@@ -2443,6 +2461,10 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
       return undefined;
     }
 
+    if (this.isComentarioEmenta(seq)) {
+      return this.getDispositivoPorIdComentario(seq.idDispositivo);
+    }
+
     const uuid2 = this.uuid2DispositivoPorSequenciaComentario.get(seq.id);
     const dispositivoPorUuid2 = uuid2 ? (findDispositivoByUuid2(articulacao, uuid2) as Dispositivo | null) : null;
     if (uuid2) {
@@ -2459,6 +2481,10 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
   }
 
   private getUuid2DispositivoComentario(seq: SequenciaComentario): string | undefined {
+    if (this.isComentarioEmenta(seq)) {
+      return undefined;
+    }
+
     const uuid2 = this.uuid2DispositivoPorSequenciaComentario.get(seq.id);
     if (uuid2) {
       return uuid2;
@@ -2556,19 +2582,49 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
   private formatarIdentificacaoDispositivo(dispositivo: Dispositivo): string {
     const partes: string[] = [];
     let atual: Dispositivo | undefined = dispositivo;
+    let artigoIdentificado: Dispositivo | undefined;
+    const dispositivosVisitados = new Set<Dispositivo>();
 
-    while (atual && atual.tipo !== TipoDispositivo.articulacao.tipo && partes.length < 6) {
+    while (atual && atual.tipo !== TipoDispositivo.articulacao.tipo && !dispositivosVisitados.has(atual)) {
+      dispositivosVisitados.add(atual);
       if (atual.tipo !== TipoDispositivo.caput.tipo || atual === dispositivo) {
         const parte = this.formatarParteIdentificacaoDispositivo(atual);
-        parte && partes.push(parte);
+        if (parte) {
+          const preposicao = partes.length ? this.getPreposicaoIdentificacaoDispositivo(atual) : '';
+          partes.push(`${preposicao}${parte}`);
+        }
+      }
+      if (atual.tipo === TipoDispositivo.artigo.tipo) {
+        artigoIdentificado = atual;
+        break;
       }
       atual = atual.pai;
     }
 
-    return partes.length ? partes.join(' do ') : 'Dispositivo comentado';
+    const identificacao = partes.length ? partes.join(' ') : 'Dispositivo comentado';
+    if (!isDispositivoAlteracao(dispositivo)) {
+      return identificacao;
+    }
+
+    const artigoProjeto = getArtigoDoProjeto(dispositivo);
+    if (!artigoProjeto || artigoProjeto === artigoIdentificado) {
+      return identificacao;
+    }
+
+    const identificacaoArtigoProjeto = this.formatarParteIdentificacaoDispositivo(artigoProjeto);
+    if (!identificacaoArtigoProjeto) {
+      return identificacao;
+    }
+
+    return `${identificacao.charAt(0).toUpperCase()}${identificacao.slice(1)} citado no ${identificacaoArtigoProjeto}`;
   }
 
   private formatarParteIdentificacaoDispositivo(dispositivo: Dispositivo): string {
+    const identificacao = dispositivo.getNumeracaoComRotuloParaComandoEmenda?.(dispositivo)?.trim();
+    if (identificacao) {
+      return identificacao;
+    }
+
     const numero = dispositivo.rotulo || dispositivo.numero || '';
 
     switch (dispositivo.tipo) {
@@ -2589,6 +2645,11 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
       default:
         return `${this.getDescricaoTipoDispositivo(dispositivo.tipo)} ${numero}`.trim();
     }
+  }
+
+  private getPreposicaoIdentificacaoDispositivo(dispositivo: Dispositivo): string {
+    const preposicao = dispositivo.pronomePossessivoSingular?.trim();
+    return `${preposicao || 'de'} `;
   }
 
   private getDescricaoTipoDispositivo(tipo?: string): string {
@@ -2740,6 +2801,16 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
 
   private isModoMobileOuTablet(): boolean {
     return window.innerWidth <= this.TABLET_WIDTH;
+  }
+
+  private exibirComentarioAtualNaLista(): void {
+    if (this.isModoMobileOuTablet()) {
+      this.abrirModalListaComentarios();
+      return;
+    }
+
+    this._tabsDireita?.show('comentarios');
+    this.rolarParaComentarioAtual();
   }
 
   private abrirModalAdicionarComentario = (event?: CustomEvent): void => {
@@ -2965,7 +3036,9 @@ export class LexmlEmendaComponent extends connect(rootStore)(LitElement) {
     comentario.texto = textoComentario;
     sequenciaComentario.comentarios = [comentario];
 
-    this.comentarioArticulacaoAtual.elemento.uuid2 && this.uuid2DispositivoPorSequenciaComentario.set(sequenciaComentario.id, this.comentarioArticulacaoAtual.elemento.uuid2);
+    if (!this.isComentarioEmenta(sequenciaComentario) && this.comentarioArticulacaoAtual.elemento.uuid2) {
+      this.uuid2DispositivoPorSequenciaComentario.set(sequenciaComentario.id, this.comentarioArticulacaoAtual.elemento.uuid2);
+    }
     this.sequenciasComentario = [...this.sequenciasComentario, sequenciaComentario];
     this.idSequenciaComentarioAtual = sequenciaComentario.id;
     this.atualizarAlertaGlobalComentarios();

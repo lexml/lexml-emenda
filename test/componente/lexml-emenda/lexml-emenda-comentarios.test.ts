@@ -1,8 +1,11 @@
+/* eslint-disable @typescript-eslint/no-unused-expressions */
 import { expect } from '@open-wc/testing';
 import { LexmlEmendaComponent } from '../../../src/components/lexml-emenda.component';
 import { Comentario, SequenciaComentario, TipoLocalComentario } from '../../../src/model/emenda/emenda';
 import { Usuario } from '../../../src/model/revisao/usuario';
 import { rootStore } from '../../../src/redux/store';
+import { createAlteracao, createArticulacao, criaDispositivo } from '../../../src/model/lexml/dispositivo/dispositivoLexmlFactory';
+import { TipoDispositivo } from '../../../src/model/lexml/tipo/tipoDispositivo';
 
 const criarUsuario = (id: string, nome: string): Usuario => Object.assign(new Usuario(), { id, nome });
 
@@ -21,6 +24,23 @@ const criarSequenciaComentario = (...comentarios: Comentario[]): SequenciaComent
   });
 
 const criarSequenciaComentarioComId = (id: string, ...comentarios: Comentario[]): SequenciaComentario => Object.assign(criarSequenciaComentario(...comentarios), { id });
+
+const criarSequenciaComentarioEmenta = (): SequenciaComentario =>
+  Object.assign(criarSequenciaComentarioComId('scEmenta', criarComentario('Comentário da ementa')), {
+    local: TipoLocalComentario.TEXTO,
+    idDispositivo: 'ementa',
+  });
+
+const criarArticulacaoComEmenta = (): any => {
+  const articulacao = createArticulacao();
+  const ementa = criaDispositivo(articulacao, TipoDispositivo.ementa.tipo);
+  articulacao.removeFilho(ementa);
+  ementa.pai = articulacao;
+  ementa.id = 'ementa';
+  ementa.texto = 'Texto original da ementa';
+  articulacao.projetoNorma = { ementa } as any;
+  return { articulacao, ementa };
+};
 
 describe('LexmlEmendaComponent - comentários', () => {
   let elementoReducerAnterior: any;
@@ -154,6 +174,18 @@ describe('LexmlEmendaComponent - comentários', () => {
     expect(component.sequenciasComentario[1].comentarios).to.have.length(1);
   });
 
+  it('Deveria preservar espaços internos e quebras de linha do comentário', () => {
+    const component = new LexmlEmendaComponent() as any;
+    const texto = 'Vou adicionar 3 pontos:\n\n-Ponto 1: tudo ok\n  -Ponto 2: tudo certo';
+    component.sequenciasComentario = [criarSequenciaComentarioComId('sc1', criarComentario('Texto original'))];
+    component.idSequenciaComentarioRespostaAtual = 'sc1';
+    Object.defineProperty(component, 'comentarioTextarea', { value: { value: texto }, configurable: true });
+
+    component.responderComentarioSelecionado();
+
+    expect(component.sequenciasComentario[0].comentarios[1].texto).to.equal(texto);
+  });
+
   it('Não deveria adicionar resposta com texto vazio', () => {
     const component = new LexmlEmendaComponent() as any;
     component.sequenciasComentario = [criarSequenciaComentario(criarComentario('Texto original'))];
@@ -244,7 +276,7 @@ describe('LexmlEmendaComponent - comentários', () => {
     expect(component.idSequenciaComentarioAtual).to.be.undefined;
   });
 
-  it('Deveria abrir modal responsiva da lista de comentarios', () => {
+  it('Deveria abrir modal responsiva da lista de comentarios', async () => {
     const component = new LexmlEmendaComponent() as any;
     let modalAberto = false;
     Object.defineProperty(component, 'listaComentariosModal', {
@@ -255,11 +287,94 @@ describe('LexmlEmendaComponent - comentários', () => {
       },
       configurable: true,
     });
+    Object.defineProperty(component, 'updateComplete', { value: Promise.resolve(true), configurable: true });
     component.rolarParaComentarioAtual = (): void => undefined;
 
     component.abrirModalListaComentarios();
+    await component.updateComplete;
 
     expect(modalAberto).to.be.true;
+  });
+
+  it('Deveria abrir a modal responsiva com o comentario do texto selecionado pelo icone', () => {
+    const component = new LexmlEmendaComponent() as any;
+    component.sequenciasComentario = [criarSequenciaComentarioComId('sc1', criarComentario('Texto original'))];
+    component.isModoMobileOuTablet = (): boolean => true;
+    let modalAberto = false;
+    let abaDesktopAberta = false;
+    component.abrirModalListaComentarios = (): void => {
+      modalAberto = true;
+    };
+    Object.defineProperty(component, '_tabsDireita', {
+      value: {
+        show: (): void => {
+          abaDesktopAberta = true;
+        },
+      },
+      configurable: true,
+    });
+
+    component.atualizarComentarioAtual(
+      new CustomEvent('comentario-selecionado', {
+        detail: { idSequenciaComentario: 'sc1', abrirAbaComentarios: true },
+      })
+    );
+
+    expect(component.idSequenciaComentarioAtual).to.equal('sc1');
+    expect(modalAberto).to.be.true;
+    expect(abaDesktopAberta).to.be.false;
+  });
+
+  it('Deveria abrir a modal responsiva com o comentario do dispositivo selecionado pelo icone', () => {
+    const component = new LexmlEmendaComponent() as any;
+    const sequenciaDispositivo = Object.assign(criarSequenciaComentarioComId('scDispositivo', criarComentario('Comentario do inciso')), {
+      local: TipoLocalComentario.TEXTO,
+      idDispositivo: 'art1_inc1',
+    });
+    component.sequenciasComentario = [sequenciaDispositivo];
+    component.isModoMobileOuTablet = (): boolean => true;
+    component.atualizarIdDispositivoSequenciaComentario = (): void => undefined;
+    let modalAberto = false;
+    component.abrirModalListaComentarios = (): void => {
+      modalAberto = true;
+    };
+
+    component.selecionarComentarioArticulacaoPorDispositivo(
+      new CustomEvent('selecionar-comentario-articulacao', {
+        detail: { idDispositivo: 'art1_inc1' },
+      })
+    );
+
+    expect(component.idSequenciaComentarioAtual).to.equal('scDispositivo');
+    expect(modalAberto).to.be.true;
+  });
+
+  it('Deveria manter a abertura da aba lateral ao selecionar comentario pelo icone no desktop', () => {
+    const component = new LexmlEmendaComponent() as any;
+    component.sequenciasComentario = [criarSequenciaComentarioComId('sc1', criarComentario('Texto original'))];
+    component.isModoMobileOuTablet = (): boolean => false;
+    let abaAberta = '';
+    let solicitouRolagem = false;
+    Object.defineProperty(component, '_tabsDireita', {
+      value: {
+        show: (aba: string): void => {
+          abaAberta = aba;
+        },
+      },
+      configurable: true,
+    });
+    component.rolarParaComentarioAtual = (): void => {
+      solicitouRolagem = true;
+    };
+
+    component.atualizarComentarioAtual(
+      new CustomEvent('comentario-selecionado', {
+        detail: { idSequenciaComentario: 'sc1', abrirAbaComentarios: true },
+      })
+    );
+
+    expect(abaAberta).to.equal('comentarios');
+    expect(solicitouRolagem).to.be.true;
   });
 
   it('Deveria selecionar sequencia clicada, abrir justificativa e posicionar cursor no comentario', async () => {
@@ -567,5 +682,108 @@ describe('LexmlEmendaComponent - comentários', () => {
     });
 
     expect(component.getTrechoComentario(sequencia)).to.equal('   ');
+  });
+
+  it('Deveria usar o id estável da ementa para recuperar o indicador do comentário', () => {
+    const component = new LexmlEmendaComponent() as any;
+    const { articulacao, ementa } = criarArticulacaoComEmenta();
+    const sequencia = criarSequenciaComentarioEmenta();
+    (rootStore.getState() as any).elementoReducer = { ...rootStore.getState().elementoReducer, articulacao };
+    component.sequenciasComentario = [sequencia];
+    component.uuid2DispositivoPorSequenciaComentario.set(sequencia.id, 'uuid-obsoleto');
+
+    component.restaurarReferenciasComentariosArticulacao();
+
+    expect(component.uuid2DispositivoPorSequenciaComentario.has(sequencia.id)).to.be.false;
+    expect(component.getIdsDispositivosComentados()).to.deep.equal(['ementa']);
+    expect(component.getDispositivoComentarioArticulacao(sequencia)).to.equal(ementa);
+    expect(component.getSequenciaComentarioPorDispositivo('ementa', ementa.uuid2)).to.equal(sequencia);
+  });
+
+  it('Não deveria excluir o comentário da ementa após editar seu texto e sincronizar para salvar', () => {
+    const component = new LexmlEmendaComponent() as any;
+    const { articulacao, ementa } = criarArticulacaoComEmenta();
+    const sequencia = criarSequenciaComentarioEmenta();
+    (rootStore.getState() as any).elementoReducer = { ...rootStore.getState().elementoReducer, articulacao };
+    component.sequenciasComentario = [sequencia];
+    component.uuid2DispositivoPorSequenciaComentario.set(sequencia.id, 'uuid-obsoleto');
+
+    ementa.texto = 'Texto da ementa alterado manualmente';
+    component.sincronizarReferenciasComentariosArticulacao(true);
+
+    expect(component.sequenciasComentario).to.have.length(1);
+    expect(component.sequenciasComentario[0].id).to.equal('scEmenta');
+    expect(component.sequenciasComentario[0].idDispositivo).to.equal('ementa');
+    expect(component.getIdsDispositivosComentados()).to.deep.equal(['ementa']);
+  });
+
+  it('Deveria formatar a identificacao do item ate o artigo sem sinais editoriais nem agrupadores', () => {
+    const component = new LexmlEmendaComponent() as any;
+    const articulacao = createArticulacao();
+    const capitulo = criaDispositivo(articulacao, TipoDispositivo.capitulo.tipo);
+    capitulo.rotulo = 'CAPÍTULO II';
+    const artigo = criaDispositivo(capitulo, TipoDispositivo.artigo.tipo) as any;
+    artigo.numero = '2';
+    artigo.createRotulo(artigo);
+    const inciso = criaDispositivo(artigo.caput, TipoDispositivo.inciso.tipo);
+    inciso.numero = '2-1';
+    inciso.createRotulo(inciso);
+    const alinea = criaDispositivo(inciso, TipoDispositivo.alinea.tipo);
+    alinea.numero = '2';
+    alinea.createRotulo(alinea);
+    const item = criaDispositivo(alinea, TipoDispositivo.item.tipo);
+    item.numero = '1';
+    item.createRotulo(item);
+
+    expect(component.formatarIdentificacaoDispositivo(item)).to.equal('item 1 da alínea “b” do inciso II-1 do art. 2º');
+  });
+
+  it('Deveria formatar artigo sem ponto final nem agrupadores superiores', () => {
+    const component = new LexmlEmendaComponent() as any;
+    const articulacao = createArticulacao();
+    const secao = criaDispositivo(articulacao, TipoDispositivo.secao.tipo);
+    secao.rotulo = 'Seção I';
+    const artigo = criaDispositivo(secao, TipoDispositivo.artigo.tipo);
+    artigo.numero = '13';
+    artigo.createRotulo(artigo);
+
+    expect(component.formatarIdentificacaoDispositivo(artigo)).to.equal('art. 13');
+  });
+
+  it('Deveria identificar dispositivo de alteração com o artigo citado e o artigo do projeto', () => {
+    const component = new LexmlEmendaComponent() as any;
+    const articulacao = createArticulacao();
+    const artigoProjeto = criaDispositivo(articulacao, TipoDispositivo.artigo.tipo) as any;
+    artigoProjeto.numero = '26';
+    artigoProjeto.createRotulo(artigoProjeto);
+    createAlteracao(artigoProjeto);
+
+    const artigoCitado = criaDispositivo(artigoProjeto.alteracoes, TipoDispositivo.artigo.tipo) as any;
+    artigoCitado.numero = '3';
+    artigoCitado.createRotulo(artigoCitado);
+    const paragrafoUnico = criaDispositivo(artigoCitado, TipoDispositivo.paragrafo.tipo) as any;
+    paragrafoUnico.createNumeroFromRotulo('Parágrafo único.');
+    paragrafoUnico.createRotulo(paragrafoUnico);
+
+    expect(component.formatarIdentificacaoDispositivo(paragrafoUnico)).to.equal('Parágrafo único do art. 3º citado no art. 26');
+  });
+
+  it('Deveria formatar a hierarquia de agrupadores com capitalizacao e preposicoes corretas', () => {
+    const component = new LexmlEmendaComponent() as any;
+    const articulacao = createArticulacao();
+    const parte = criaDispositivo(articulacao, TipoDispositivo.parte.tipo);
+    parte.rotulo = 'PARTE ÚNICA';
+    const livro = criaDispositivo(parte, TipoDispositivo.livro.tipo);
+    livro.rotulo = 'LIVRO ÚNICO';
+    const titulo = criaDispositivo(livro, TipoDispositivo.titulo.tipo);
+    titulo.rotulo = 'TÍTULO ÚNICO';
+    const capitulo = criaDispositivo(titulo, TipoDispositivo.capitulo.tipo);
+    capitulo.rotulo = 'CAPÍTULO I';
+    const secao = criaDispositivo(capitulo, TipoDispositivo.secao.tipo);
+    secao.rotulo = 'Seção Única';
+    const subsecao = criaDispositivo(secao, TipoDispositivo.subsecao.tipo);
+    subsecao.rotulo = 'Subseção Única';
+
+    expect(component.formatarIdentificacaoDispositivo(subsecao)).to.equal('Subseção Única da Seção Única do Capítulo I do Título Único do Livro Único da Parte Única');
   });
 });

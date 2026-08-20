@@ -624,6 +624,10 @@ export const editorStyles = html`
       font-size: 18px;
     }
 
+    .mobile-button.btn-comentarios sl-icon {
+      transform: translateY(2px);
+    }
+
     .mobile-button span {
       vertical-align: 4px;
     }
@@ -643,6 +647,11 @@ export const editorStyles = html`
     @media (max-width: 768px) {
       .mobile-buttons {
         display: inline-block !important;
+      }
+      .container__linha > .container__menu,
+      .container__linha > .container__revisao,
+      .container__linha > .container__opcoes {
+        align-self: center;
       }
       #chk-em-revisao span {
         display: none;

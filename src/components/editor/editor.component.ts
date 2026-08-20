@@ -311,6 +311,10 @@ export class EditorComponent extends connect(rootStore)(LitElement) {
               <sl-icon name="code"></sl-icon>
               <span>Comando</span>
             </button>
+            <button type="button" class="mobile-button btn-comentarios" title="Comentários" @click=${this.abrirModalListaComentarios}>
+              <sl-icon name="chat-left-text"></sl-icon>
+              <span>Comentários</span>
+            </button>
             <button class="mobile-button btn-dicas" title="Dicas" @click=${this.showAjudaModal}>
               <sl-icon name="lightbulb"></sl-icon>
               <span>Dicas</span>
@@ -355,6 +359,15 @@ export class EditorComponent extends connect(rootStore)(LitElement) {
   private showComandoEmendaModal(): void {
     this.comandoEmendaModal.show();
   }
+
+  private abrirModalListaComentarios = (): void => {
+    this.dispatchEvent(
+      new CustomEvent('abrir-modal-lista-comentarios', {
+        bubbles: true,
+        composed: true,
+      })
+    );
+  };
 
   private formatacaoAlterada(): void {
     const texto = document.getSelection()?.toString();
@@ -2011,6 +2024,13 @@ export class EditorComponent extends connect(rootStore)(LitElement) {
           containerTr.insertBefore(EtaQuillUtil.criarContainerRevisao(mapElementos.get(uuid)!), linha.containerDireito.prev);
         }
       }
+    });
+
+    // O indicador pode estar dentro do container de revisao removido ou precisar
+    // ser transferido para o novo container. Sincroniza apenas as linhas afetadas.
+    new Set([...uuidsElementosSemRevisao, ...uuidsElementosComRevisao]).forEach(uuid => {
+      const linha = this.quill.getLinha(uuid);
+      linha && this.atualizarIndicadorComentarioLinha(linha, this.isLinhaComComentario(linha));
     });
   }
 

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-expressions */
 import { expect, fixture, html } from '@open-wc/testing';
 import { EditorTextoRicoComponent, Usuario } from '../../../src';
 import { ajustaHtmlFromEditor, ajustaHtmlToEditor } from '../../../src/components/editor-texto-rico/texto-rico-util';
@@ -283,6 +284,87 @@ describe('Testando lexml-emenda-editor-texto-rico (EditorTextoRicoComponent)', (
     expect(editorTextoRico.getTextoComentario('sc123')).to.equal('Texto comentado');
   });
 
+  it('Deveria reservar espaço para o ícone somente no último fragmento de comentário dividido por exclusão revisada', async () => {
+    editorTextoRico = await fixture<EditorTextoRicoComponent>(html`<lexml-emenda-editor-texto-rico .modo=${Modo.JUSTIFICATIVA}></lexml-emenda-editor-texto-rico>`);
+    editorTextoRico.setContent('<p>Teste par<del usuario="Fulano" date="2026-08-12 13:49:00" id-revisao="r1">alele</del>pipedo</p>');
+    editorTextoRico.quill?.setSelection(11, 6);
+    editorTextoRico.adicionarComentario('sc123');
+
+    await new Promise(resolve => requestAnimationFrame(() => resolve(undefined)));
+
+    const fragmentos = Array.from(editorTextoRico.quill!.root.querySelectorAll<HTMLElement>('comentario[id-sequencia-comentario="sc123"]'));
+    expect(fragmentos, editorTextoRico.quill!.root.innerHTML).to.have.length(2);
+    expect(fragmentos[0].hasAttribute('data-comentario-fragmento-final')).to.be.false;
+    expect(fragmentos[1].hasAttribute('data-comentario-fragmento-final')).to.be.true;
+    expect(getComputedStyle(fragmentos[0]).marginRight).to.equal('0px');
+    expect(getComputedStyle(fragmentos[1]).marginRight).to.equal('22px');
+    expect(editorTextoRico.ajustaHtml(editorTextoRico.quill!.root.innerHTML)).to.not.include('data-comentario-fragmento-final');
+  });
+
+  it('Deveria distinguir o cursor dentro e fora do comentário pelos lados do ícone', async () => {
+    editorTextoRico = await fixture<EditorTextoRicoComponent>(html`<lexml-emenda-editor-texto-rico .modo=${Modo.JUSTIFICATIVA}></lexml-emenda-editor-texto-rico>`);
+    editorTextoRico.setContent('<p><comentario id-sequencia-comentario="sc123">fortale</comentario>za</p>');
+    await new Promise(resolve => requestAnimationFrame(() => resolve(undefined)));
+
+    const botao = editorTextoRico.querySelector('.comentario-texto-icone') as HTMLButtonElement;
+    const botaoRect = botao.getBoundingClientRect();
+    const comentario = editorTextoRico.quill!.root.querySelector('comentario') as HTMLElement;
+    const textoComentario = comentario.lastChild as Text;
+    const textoPosterior = comentario.nextSibling as Text;
+    const rangeUltimoCaractere = document.createRange();
+    rangeUltimoCaractere.setStart(textoComentario, textoComentario.data.length - 1);
+    rangeUltimoCaractere.setEnd(textoComentario, textoComentario.data.length);
+    const ultimoCaractereRect = rangeUltimoCaractere.getBoundingClientRect();
+    const rangeProximoCaractere = document.createRange();
+    rangeProximoCaractere.setStart(textoPosterior, 0);
+    rangeProximoCaractere.setEnd(textoPosterior, 1);
+    const proximoCaractereRect = rangeProximoCaractere.getBoundingClientRect();
+
+    const eventoDentro = new MouseEvent('click', {
+      bubbles: true,
+      cancelable: true,
+      button: 0,
+      clientX: Math.min(botaoRect.left - 0.5, ultimoCaractereRect.left + ultimoCaractereRect.width * 0.75),
+      clientY: ultimoCaractereRect.top + ultimoCaractereRect.height / 2,
+    });
+    editorTextoRico.quill!.root.dispatchEvent(eventoDentro);
+
+    expect(editorTextoRico.quill!.getSelection()?.index).to.equal(7);
+    let nativeRange = document.getSelection()?.getRangeAt(0);
+    expect(comentario.contains(nativeRange?.startContainer || null)).to.be.true;
+
+    editorTextoRico.quill!.root.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0, clientX: proximoCaractereRect.left + 1 }));
+    editorTextoRico.quill!.root.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, button: 0, clientX: proximoCaractereRect.left + 1 }));
+    const eventoFora = new MouseEvent('click', {
+      bubbles: true,
+      cancelable: true,
+      button: 0,
+      clientX: proximoCaractereRect.left + 1,
+      clientY: proximoCaractereRect.top + proximoCaractereRect.height / 2,
+    });
+    editorTextoRico.quill!.root.dispatchEvent(eventoFora);
+
+    expect(editorTextoRico.quill!.getSelection()?.index).to.equal(7);
+    nativeRange = document.getSelection()?.getRangeAt(0);
+    expect(comentario.contains(nativeRange?.startContainer || null)).to.be.false;
+    const cursor = editorTextoRico.quill!.root.querySelector('.ql-cursor');
+    expect(cursor?.parentElement).to.equal(textoPosterior.parentElement);
+    expect(cursor?.nextSibling === textoPosterior).to.be.true;
+
+    const setaEsquerda = new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true, cancelable: true });
+    editorTextoRico.quill!.root.dispatchEvent(setaEsquerda);
+    nativeRange = document.getSelection()?.getRangeAt(0);
+    expect(setaEsquerda.defaultPrevented).to.be.true;
+    expect(comentario.contains(nativeRange?.startContainer || null)).to.be.true;
+
+    const setaDireita = new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true });
+    editorTextoRico.quill!.root.dispatchEvent(setaDireita);
+    nativeRange = document.getSelection()?.getRangeAt(0);
+    expect(setaDireita.defaultPrevented).to.be.true;
+    expect(comentario.contains(nativeRange?.startContainer || null)).to.be.false;
+    expect(editorTextoRico.quill!.root.querySelector('.ql-cursor')?.nextSibling === textoPosterior).to.be.true;
+  });
+
   it('Não deveria colar marcação de comentário copiada do editor', async () => {
     editorTextoRico.setContent('<p>Início fim.</p>');
     editorTextoRico.quill?.setSelection(7, 0);
@@ -302,6 +384,28 @@ describe('Testando lexml-emenda-editor-texto-rico (EditorTextoRicoComponent)', (
     expect(editorTextoRico.texto).to.include('texto comentado');
     expect(editorTextoRico.texto).to.not.include('<comentario');
     expect(editorTextoRico.possuiComentario('sc123')).to.be.false;
+  });
+
+  ['bem', 'bem '].forEach(textoSelecionado => {
+    it(`Deveria copiar exatamente o texto comentado sem espaco adicional: "${textoSelecionado}"`, () => {
+      editorTextoRico.setContent('<p>Tudo <comentario id-sequencia-comentario="sc123">bem</comentario> depois.</p>');
+      editorTextoRico.quill?.setSelection(5, textoSelecionado.length);
+
+      const clipboardData = new DataTransfer();
+      const copyEvent = new ClipboardEvent('copy', {
+        bubbles: true,
+        cancelable: true,
+        clipboardData,
+      });
+
+      editorTextoRico.quill?.root.dispatchEvent(copyEvent);
+
+      expect(copyEvent.defaultPrevented).to.be.true;
+      expect(clipboardData.getData('text/plain')).to.equal(textoSelecionado);
+      expect(clipboardData.getData('text/html')).to.not.include('<comentario');
+      expect(clipboardData.getData('text/html')).to.not.include('text-indent');
+      expect(clipboardData.getData('text/html')).to.not.include('\t');
+    });
   });
 
   it('Deveria desabilitar o botão de adicionar comentário quando a seleção já possuir comentário', async () => {
@@ -443,6 +547,23 @@ describe('Testando lexml-emenda-editor-texto-rico (EditorTextoRicoComponent)', (
 
     expect(fragmentos[0].classList.contains('revisao-fragmento-continua-proximo')).to.be.true;
     expect(fragmentos[1].classList.contains('revisao-fragmento-continua-anterior')).to.be.true;
+  });
+
+  it('Nao deveria deslocar o texto posterior ao exibir a moldura da revisao', async () => {
+    editorTextoRico = await fixture<EditorTextoRicoComponent>(html`<lexml-emenda-editor-texto-rico .modo=${Modo.JUSTIFICATIVA}></lexml-emenda-editor-texto-rico>`);
+    editorTextoRico.setContent('<p>Antes <del usuario="Teste" date="2026-08-12 13:00:00" id-revisao="rev1">revisado</del> depois</p>');
+
+    const revisao = editorTextoRico.quill!.root.querySelector('del') as HTMLElement;
+    const textoPosterior = revisao.nextSibling as Text;
+    const rangeTextoPosterior = document.createRange();
+    rangeTextoPosterior.setStart(textoPosterior, 1);
+    rangeTextoPosterior.setEnd(textoPosterior, 2);
+    const posicaoAntes = rangeTextoPosterior.getBoundingClientRect().left;
+
+    revisao.classList.add('revisao-selecionada');
+    await new Promise(resolve => requestAnimationFrame(() => resolve(undefined)));
+
+    expect(rangeTextoPosterior.getBoundingClientRect().left).to.be.closeTo(posicaoAntes, 0.1);
   });
 
   it('Deveria centralizar tooltip sobre fragmentos continuos da mesma revisao na mesma linha', () => {
