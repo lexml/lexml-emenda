@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/no-unused-expressions */
 import { expect, fixture, html } from '@open-wc/testing';
-import { EditorTextoRicoComponent, Usuario } from '../../../src';
+import '../../../src';
+import { EditorTextoRicoComponent } from '../../../src/components/editor-texto-rico/editor-texto-rico.component';
+import { Usuario } from '../../../src/model/revisao/usuario';
 import { ajustaHtmlFromEditor, ajustaHtmlToEditor } from '../../../src/components/editor-texto-rico/texto-rico-util';
 import { rootStore } from '../../../src/redux/store';
 import { ativarDesativarRevisaoAction } from '../../../src/model/lexml/acao/ativarDesativarRevisaoAction';

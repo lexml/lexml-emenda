@@ -1,5 +1,7 @@
+/* eslint-disable @typescript-eslint/no-unused-expressions */
 import { expect, fixture, html, oneEvent } from '@open-wc/testing';
-import { SubstituicaoTermoComponent } from '../../../src';
+import '../../../src';
+import { SubstituicaoTermoComponent } from '../../../src/components/substituicao-termo/substituicao-termo.component';
 import { ComandoEmendaBuilder } from '../../../src/emenda/comando-emenda-builder';
 import { SubstituicaoTermo } from '../../../src/model/emenda/emenda';
 

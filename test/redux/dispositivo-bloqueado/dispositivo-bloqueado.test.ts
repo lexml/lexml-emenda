@@ -1,11 +1,13 @@
+/* eslint-disable @typescript-eslint/no-unused-expressions */
 import { State } from '../../../src/redux/state';
 import { MPV_905_2019 } from '../../doc/mpv_905_2019';
 import { expect } from '@open-wc/testing';
+import '../../../src';
 import { buildProjetoNormaFromJsonix } from '../../../src/model/lexml/documento/conversor/buildProjetoNormaFromJsonix';
 import { elementoReducer } from '../../../src/redux/elemento/reducer/elementoReducer';
 import { ClassificacaoDocumento } from '../../../src/model/documento/classificacao';
 import { ABRIR_ARTICULACAO } from '../../../src/model/lexml/acao/openArticulacaoAction';
-import { LexmlEmendaParametrosEdicao } from '../../../src';
+import { LexmlEmendaParametrosEdicao } from '../../../src/components/lexml-emenda.component';
 import {
   buscaDispositivoById,
   getDispositivoAndFilhosAsLista,

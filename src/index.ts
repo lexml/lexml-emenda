@@ -18,35 +18,45 @@ import '@shoelace-style/shoelace/dist/components/checkbox/checkbox';
 import '@shoelace-style/shoelace/dist/components/switch/switch';
 import '@shoelace-style/shoelace/dist/components/tooltip/tooltip';
 import '@shoelace-style/shoelace/dist/components/card/card';
+import './model/lexml/util/mixin';
 import { configurePrivateQuill } from './internal/quill/configure-private-quill';
 
 // ---------------------------------------------------
+// REGISTRO DOS COMPONENTES INTERNOS
+// ---------------------------------------------------
+// Estes imports mantêm o registro das tags usadas pelo <lexml-emenda>,
+// sem transformar as classes visuais internas em API pública do pacote.
 
-export { ArticulacaoComponent } from './components/articulacao.component';
-export { ComandoEmendaComponent } from './components/comandoEmenda/comandoEmenda.component';
-export { EditorComponent } from './components/editor/editor.component';
-export { ElementoComponent } from './components/elemento/elemento.component';
-export { AtalhosComponent as HelpComponent } from './components/ajuda/atalhos.component';
-export { EditorTextoRicoApi, EditorTextoRicoComponent } from './components/editor-texto-rico/editor-texto-rico.component';
-export { AlterarLarguraTabelaColunaModalComponent } from './components/editor-texto-rico/alterar-largura-tabela-coluna-modal';
-export { AlterarLarguraImagemModalComponent } from './components/editor-texto-rico/alterar-largura-imagem-modal';
-export { LexmlEtaComponent } from './components/lexml-eta.component';
-export { AutoriaComponent } from './components/autoria/autoria.component';
-export { DestinoComponent } from './components/destino/destino.component';
-export { LexmlAutocomplete } from './components/lexml-autocomplete';
-export { DataComponent } from './components/data/data.component';
+import './components/articulacao.component';
+import './components/comandoEmenda/comandoEmenda.component';
+import './components/editor/editor.component';
+import './components/elemento/elemento.component';
+import './components/ajuda/atalhos.component';
+import './components/editor-texto-rico/editor-texto-rico.component';
+import './components/editor-texto-rico/alterar-largura-tabela-coluna-modal';
+import './components/editor-texto-rico/alterar-largura-imagem-modal';
+import './components/lexml-eta.component';
+import './components/autoria/autoria.component';
+import './components/destino/destino.component';
+import './components/lexml-autocomplete';
+import './components/data/data.component';
+import './components/alertas/alertas.component';
+import './components/ajuda/ajuda.component';
+import './components/ajuda/ajuda.modal.component';
+import './components/sufixos/sufixos.modal.componet';
+import './components/comandoEmenda/comandoEmenda.modal.component';
+import './components/ajuda/atalhos.modal.component';
+import './components/opcoesImpressao/opcoesImpressao.component';
+import './components/switchRevisao/switch-revisao.component';
+import './components/substituicao-termo/substituicao-termo.component';
+import './components/editor/emendaDivididaDialog';
+
+// ---------------------------------------------------
+// API PÚBLICA
+// ---------------------------------------------------
+
 export { LexmlEmendaComponent, LexmlEmendaParametrosEdicao } from './components/lexml-emenda.component';
 export { LexmlEmendaConfig } from './model/lexmlEmendaConfig';
-export { AlertasComponent } from './components/alertas/alertas.component';
-export { AjudaComponent } from './components/ajuda/ajuda.component';
-export { AjudaModalComponent } from './components/ajuda/ajuda.modal.component';
-export { SufixosModalComponent } from './components/sufixos/sufixos.modal.componet';
-export { ComandoEmendaModalComponent } from './components/comandoEmenda/comandoEmenda.modal.component';
-export { AtalhosModalComponent } from './components/ajuda/atalhos.modal.component';
-export { OpcoesImpressaoComponent } from './components/opcoesImpressao/opcoesImpressao.component';
-export { SwitchRevisaoComponent } from './components/switchRevisao/switch-revisao.component';
-export { SubstituicaoTermoComponent } from './components/substituicao-termo/substituicao-termo.component';
-export { Usuario } from './model/revisao/usuario';
-export { emendaDivididaDialog } from './components/editor/emendaDivididaDialog';
+export { Emenda } from './model/emenda/emenda';
 
 configurePrivateQuill();
