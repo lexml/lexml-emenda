@@ -6,6 +6,10 @@ export const editorTextoRicoCss = html`
       height: 375px;
       font-size: 18px !important;
     }
+    .lexml-emenda-editor-texto-rico img {
+      display: block;
+      margin: auto;
+    }
     .lexml-emenda-editor-texto-rico p,
     .lexml-emenda-editor-texto-rico ol,
     .lexml-emenda-editor-texto-rico ul {
