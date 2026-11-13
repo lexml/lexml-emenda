@@ -279,9 +279,17 @@ export class EtaQuill extends PrivateQuill {
 
     if (range) {
       const blotCursor: EtaBlot = this.getLine(range.index)[0];
-      const linhaCursor: EtaContainerTable = blotCursor.linha;
+      let linhaCursor: EtaContainerTable = blotCursor.linha;
 
-      if (
+      if (linhaCursor?.tipo === 'Articulacao') {
+        // A linha raiz da articulação não recebe o cursor: leva-o para o início da linha seguinte (ementa ou primeiro dispositivo)
+        const proximaLinha: EtaContainerTable | undefined = linhaCursor.next;
+        if (!proximaLinha?.blotConteudo) {
+          return false;
+        }
+        this.setSelection(this.getIndex(proximaLinha.blotConteudo), 0, PrivateQuill.sources.SILENT);
+        linhaCursor = proximaLinha;
+      } else if (
         blotCursor.tagName === EtaBlotRotulo.tagName ||
         blotCursor.tagName === EtaBlotEspaco.tagName ||
         blotCursor.tagName === EtaBlotMenu.tagName ||

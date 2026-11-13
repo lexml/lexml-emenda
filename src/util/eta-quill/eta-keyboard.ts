@@ -280,7 +280,8 @@ export class EtaKeyboard extends Keyboard {
     const [blotCursor, offset] = this.quill.getLine(range.index);
 
     if (offset === 0 || this.quill.cursorDeTextoEstaSobreOmissis()) {
-      if (blotCursor.linha.prev) {
+      // Não sobe para a linha raiz da articulação, que não recebe o cursor
+      if (blotCursor.linha.prev && blotCursor.linha.prev.tipo !== 'Articulacao') {
         const linhaAnt: EtaContainerTable = blotCursor.linha.prev;
         const index: number = this.quill.getIndex(linhaAnt.blotConteudo) + linhaAnt.blotConteudo.tamanho;
         this.quill.setIndex(index, PrivateQuill.sources.USER);

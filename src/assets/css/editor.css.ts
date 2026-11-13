@@ -352,6 +352,10 @@ export const editorStyles = html`
       min-height: 1px;
       line-height: 0.42;
       margin: 1px;
+      /* A linha raiz da articulação não recebe clique, seleção nem cursor visível */
+      pointer-events: none;
+      user-select: none;
+      caret-color: transparent;
     }
 
     .agrupador {
