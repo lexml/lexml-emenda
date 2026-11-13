@@ -1,0 +1,52 @@
+schema: spec-driven
+
+context: |
+  Idioma: pt-BR.
+  Escreva todos os artefatos (proposal, design, specs, tasks) em pt-BR. Mantenha em inglês apenas termos técnicos,
+  os cabeçalhos estruturais do OpenSpec (ex.: "## ADDED Requirements", "### Requirement:", "#### Scenario:")
+  e as palavras-chave SHALL/MUST, exigidos pela validação do OpenSpec.
+
+  Domínio: técnica legislativa brasileira (LC 95/1998, Decreto 9.191/2017, padrão LexML). Use a terminologia do domínio
+  (dispositivo, artigo, parágrafo, inciso, alínea, item, agrupador, caput, omissis, comando de emenda, justificação).
+
+  Restrições do projeto:
+  - A API pública do pacote (src/index.ts) é restrita a LexmlEmendaComponent, LexmlEmendaParametrosEdicao,
+    LexmlEmendaConfig e Emenda. Mudanças nela devem ser explicitadas na proposal e refletidas em docs/api.md
+    e scripts/validate-package.mjs.
+  - A Emenda é persistida por aplicações consumidoras: mudanças no modelo devem manter compatibilidade com
+    emendas já salvas.
+  - O Quill é uma cópia privada embutida no bundle e não pode ser exposto nem externalizado.
+
+  Nomenclatura das changes: todo diretório em openspec/changes/ (inclusive o argumento de `openspec new change`)
+  MUST ser criado já no formato `<yyyy>-<mm>-<dd>-c<xx>-<nome-da-change>` (ex.: `2026-09-15-c01-salvar-documento-articulado`),
+  usando a data de criação e um contador sequencial de 2 dígitos que reinicia em c01 a cada dia. Antes de criar,
+  determine o próximo contador do dia consultando openspec/changes/ e openspec/changes/archive/. Não crie a change
+  com nome simples contando com o prefixo de data adicionado pelo `openspec archive` (nomes já datados são
+  arquivados sem novo prefixo).
+
+rules:
+  tasks:
+    - Incluir tarefas de testes unitários/integração (web-test-runner, em test/) para mudanças em reducers, no modelo ou na geração do comando de emenda.
+    - Incluir tarefa de atualização de docs/api.md quando a API pública ou o modelo Emenda mudar.
+    - |
+      Incluir sempre uma tarefa explícita de teste E2E (Cypress, em cypress/e2e/, executado contra o demo local
+      em http://localhost:8000/demo com `npm start` em execução). Antes de descartá-la,
+      avaliar a viabilidade de criá-la e executá-la; se não for viável ou não compensar o esforço, não omitir em
+      silêncio: registrar a decisão e propor uma alternativa concreta (teste de integração ou unitário) que cubra
+      o mesmo risco.
+
+operations:
+  apply:
+    guidance:
+      - Rodar lint apenas nos arquivos alterados, nunca no projeto inteiro.
+      - |
+        Por padrão, rodar apenas os testes E2E (specs em cypress/e2e/) relacionados à change atual, com
+        `npm run cy:run:local -- --spec <spec>`; a suíte completa só quando o usuário pedir explicitamente.
+      - |
+        Ao concluir todas as subtarefas de uma tarefa numerada (ex.: todas as 2.x antes de passar às 3.x),
+        parar e pedir a validação do usuário antes de seguir para a próxima tarefa numerada. Nunca encadear
+        tarefas numeradas diferentes sem essa pausa.
+      - |
+        Ao pausar para validação, oferecer duas opções: o usuário faz o commit por conta própria, ou você ajuda
+        a organizar o(s) commit(s), seguindo a seção "Commits" do CLAUDE.md (agrupamento semântico, mensagem
+        concisa em pt-BR com a issue entre parênteses no final (perguntar se não for conhecida), plano apresentado para aprovação antes de commitar, sem co-autoria do assistente).
