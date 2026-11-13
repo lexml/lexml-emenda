@@ -20,6 +20,11 @@ As regras de idioma dos artefatos, nomenclatura das changes (`<yyyy>-<mm>-<dd>-c
 - Não incluir o assistente como co-autor (sem `Co-Authored-By`).
 - Sempre referenciar a issue entre parênteses no final da mensagem, ex.: `feat: emite evento fatalError ao falhar abertura da emenda (#935)`. Se a issue não for conhecida (não informada pelo usuário nem identificável na change ou no branch), perguntar antes de propor o commit.
 
+## Tags e versões
+
+- As tags de versão não devem ter o prefixo `v` (ex.: `1.9.0`, e não `v1.9.0`).
+- Commits de atualização de versão não precisam referenciar issue, ex.: `build: atualiza versão para 1.9.0`.
+
 ## Quadro Kanban
 
 O projeto usa o quadro kanban https://github.com/orgs/lexml/projects/2 para acompanhar as issues e o andamento do trabalho.
