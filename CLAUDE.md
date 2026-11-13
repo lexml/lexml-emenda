@@ -20,6 +20,10 @@ As regras de idioma dos artefatos, nomenclatura das changes (`<yyyy>-<mm>-<dd>-c
 - Não incluir o assistente como co-autor (sem `Co-Authored-By`).
 - Sempre referenciar a issue entre parênteses no final da mensagem, ex.: `feat: emite evento fatalError ao falhar abertura da emenda (#935)`. Se a issue não for conhecida (não informada pelo usuário nem identificável na change ou no branch), perguntar antes de propor o commit.
 
+## Quadro Kanban
+
+O projeto usa o quadro kanban https://github.com/orgs/lexml/projects/2 para acompanhar as issues e o andamento do trabalho.
+
 ## Visão geral
 
 `@lexml/lexml-emenda` é uma biblioteca de *web components* (Lit 3 + Redux + Quill 1.3.7 + Shoelace) para edição de textos articulados de normas e proposições legislativas, com foco na elaboração de **emendas** e na geração automática do **comando de emenda**, seguindo a LC 95/1998, o Decreto 9.191/2017 e o padrão LexML.
