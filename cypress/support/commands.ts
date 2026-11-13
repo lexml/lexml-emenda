@@ -213,7 +213,7 @@ Cypress.Commands.add('getTextoDoDispositivo', { prevSubject: 'element' }, (subje
 });
 
 Cypress.Commands.add('getSwitchRevisaoDispositivo', () => {
-  return cy.get('lexml-eta lexml-emenda-switch-revisao.revisao-container').as('switchRevisaoDispositivo');
+  return cy.get('lexml-emenda-eta lexml-emenda-switch-revisao.revisao-container').as('switchRevisaoDispositivo');
 });
 
 Cypress.Commands.add('getCheckRevisao', { prevSubject: 'element' }, (subject: JQuery<HTMLElement>): Cypress.Chainable<JQuery<HTMLElement>> => {
@@ -261,8 +261,8 @@ Cypress.Commands.add('checarEstadoInicialAoCriarNovaEmendaEstruturada', (payload
 
   cy.get('lexml-emenda').should('exist');
 
-  // lexml-eta deve existir e estar visível
-  cy.get('lexml-eta').should('exist').should('have.attr', 'style', 'display: block');
+  // lexml-emenda-eta deve existir e estar visível
+  cy.get('lexml-emenda-eta').should('exist').should('have.attr', 'style', 'display: block');
 
   // lexml-emenda-editor-texto-rico deve existir e estar oculto
   cy.get('lexml-emenda-editor-texto-rico[modo="textoLivre"]').should('exist').should('have.attr', 'style', 'display: none');
